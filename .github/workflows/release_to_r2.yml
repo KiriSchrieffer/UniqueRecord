@@ -108,8 +108,27 @@ jobs:
           Get-ChildItem -Path $uploadRoot -File | ForEach-Object {
             $key = "downloads/$($_.Name)"
             Write-Host "Uploading to R2: $key"
-            wrangler r2 object put "$env:CF_R2_BUCKET/$key" --file $_.FullName
+            wrangler r2 object put "$env:CF_R2_BUCKET/$key" --file $_.FullName --remote
           }
+
+      - name: Verify remote R2 manifest
+        shell: pwsh
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          $verifyDir = ".\build\r2_verify"
+          New-Item -ItemType Directory -Path $verifyDir -Force | Out-Null
+          $verifyManifest = Join-Path $verifyDir "latest.json"
+          wrangler r2 object get "$env:CF_R2_BUCKET/downloads/latest.json" --file $verifyManifest --remote
+          if (-not (Test-Path $verifyManifest)) {
+            throw "Failed to fetch remote latest.json from R2."
+          }
+          $content = Get-Content $verifyManifest -Raw -Encoding UTF8
+          if ($content -notmatch [regex]::Escape($env:INSTALLER_NAME)) {
+            throw "Remote latest.json does not reference expected installer: $env:INSTALLER_NAME"
+          }
+          Write-Host "Remote R2 manifest verification passed."
 
       - name: Commit website manifest for Pages auto deploy
         shell: pwsh
