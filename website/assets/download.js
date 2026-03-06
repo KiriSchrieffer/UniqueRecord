@@ -1,4 +1,14 @@
-const MANIFEST_URL = `/downloads/latest.json?t=${Date.now()}`;
+const CACHE_BUSTER = Date.now();
+const MANIFEST_SOURCES = [
+  {
+    url: `https://download.uniquerecord.com/downloads/latest.json?t=${CACHE_BUSTER}`,
+    label: "R2",
+  },
+  {
+    url: `/downloads/latest.json?t=${CACHE_BUSTER}`,
+    label: "Pages fallback",
+  },
+];
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "-";
@@ -37,9 +47,22 @@ function setDownloadLink(url, fileName) {
 
 async function loadManifest() {
   try {
-    const resp = await fetch(MANIFEST_URL, { cache: "no-store" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const manifest = await resp.json();
+    let manifest = null;
+    let sourceLabel = "";
+    let lastError = null;
+    for (const source of MANIFEST_SOURCES) {
+      try {
+        const resp = await fetch(source.url, { cache: "no-store" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        manifest = await resp.json();
+        sourceLabel = source.label;
+        break;
+      } catch (err) {
+        lastError = err;
+        console.warn(`manifest load failed from ${source.label}`, err);
+      }
+    }
+    if (!manifest) throw lastError || new Error("manifest unavailable");
 
     const version = manifest.version || "unknown";
     const publishedAt = manifest.published_at || "-";
@@ -70,7 +93,7 @@ async function loadManifest() {
       }
     }
 
-    setStatus("下载信息已更新，可以直接下载安装。");
+    setStatus(`下载信息已更新（来源：${sourceLabel}），可以直接下载安装。`);
   } catch (err) {
     console.error("failed to load manifest", err);
     setStatus("暂时无法读取下载清单，请稍后重试或联系站点管理员。", true);
