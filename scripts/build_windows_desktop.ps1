@@ -88,8 +88,13 @@ Invoke-Step -Name "pip install desktop deps" -Action {
     & $PythonExe -m pip install -r requirements-desktop.txt
 }
 
-Invoke-Step -Name "generate app icon (Logo I)" -Action {
-    & $PythonExe scripts/generate_logo_i_icon.py
+$appIconPath = Join-Path $ProjectRoot "assets\branding\unique_record_logo_i.ico"
+if (Test-Path -LiteralPath $appIconPath) {
+    Write-Host "==> generate app icon (Logo I) [skip: existing icon found]"
+} else {
+    Invoke-Step -Name "generate app icon (Logo I)" -Action {
+        & $PythonExe scripts/generate_logo_i_icon.py
+    }
 }
 
 $PyInstallerWorkPath = "build/pyinstaller_$((Get-Date).ToString('yyyyMMdd_HHmmss'))"
@@ -102,7 +107,7 @@ Invoke-Step -Name "pyinstaller" -Action {
         --workpath "$PyInstallerWorkPath" `
         --name "UniqueRecord" `
         --windowed `
-        --icon "assets/branding/unique_record_logo_i.ico" `
+        --icon "$appIconPath" `
         --add-data "src;src" `
         --add-data "configs;configs" `
         --add-data "$RuntimeAddDataSpec" `
