@@ -130,6 +130,52 @@ jobs:
           }
           Write-Host "Remote R2 manifest verification passed."
 
+      - name: Verify public download domain manifest
+        shell: pwsh
+        run: |
+          $baseUrl = $env:CF_R2_PUBLIC_BASE_URL.Trim().TrimEnd("/")
+          if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+            throw "CF_R2_PUBLIC_BASE_URL is empty."
+          }
+
+          $maxAttempts = 18
+          $sleepSeconds = 10
+          $verified = $false
+
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            $manifestUrl = "$baseUrl/downloads/latest.json?t=$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+            Write-Host "Checking public manifest ($attempt/$maxAttempts): $manifestUrl"
+            try {
+              $resp = Invoke-WebRequest -UseBasicParsing -Uri $manifestUrl -Method Get -TimeoutSec 30
+              if ($resp.StatusCode -ne 200) {
+                throw "HTTP $($resp.StatusCode)"
+              }
+
+              $manifest = $resp.Content | ConvertFrom-Json
+              if ($manifest.file_name -ne $env:INSTALLER_NAME) {
+                throw "Expected $env:INSTALLER_NAME, got $($manifest.file_name)"
+              }
+
+              if ([string]::IsNullOrWhiteSpace($manifest.url)) {
+                throw "Public manifest has empty url field."
+              }
+
+              Write-Host "Public manifest verification passed: $($manifest.file_name)"
+              $verified = $true
+              break
+            } catch {
+              if ($attempt -eq $maxAttempts) {
+                throw "Public download domain verification failed: $($_.Exception.Message)"
+              }
+              Write-Host "Public manifest not ready yet: $($_.Exception.Message)"
+              Start-Sleep -Seconds $sleepSeconds
+            }
+          }
+
+          if (-not $verified) {
+            throw "Public download domain verification did not pass."
+          }
+
       - name: Commit website manifest for Pages auto deploy
         shell: pwsh
         run: |
