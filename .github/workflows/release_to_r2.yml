@@ -163,14 +163,33 @@ jobs:
                 throw "HTTP $($resp.StatusCode)"
               }
 
-              $manifest = $resp.Content | ConvertFrom-Json
+              $contentType = $resp.Headers["Content-Type"]
+              $contentText = ""
+              if ($resp.Content -is [byte[]]) {
+                $contentText = [System.Text.Encoding]::UTF8.GetString($resp.Content)
+              } else {
+                $contentText = [string]$resp.Content
+              }
+
+              $preview = ($contentText -replace "\s+", " ").Trim()
+              if ([string]::IsNullOrWhiteSpace($preview)) {
+                $preview = "<empty>"
+              }
+              if ($preview.Length -gt 240) {
+                $preview = $preview.Substring(0, 240)
+              }
+
+              try {
+                $manifest = $contentText | ConvertFrom-Json
+              } catch {
+                throw "Public manifest is not valid JSON. Content-Type=$contentType, BodyPreview=$preview"
+              }
+
               $manifestFileName = $manifest.file_name
+              if ([string]::IsNullOrWhiteSpace($manifestFileName) -and -not [string]::IsNullOrWhiteSpace($manifest.fileName)) {
+                $manifestFileName = [string]$manifest.fileName
+              }
               if ([string]::IsNullOrWhiteSpace($manifestFileName)) {
-                $contentType = $resp.Headers["Content-Type"]
-                $preview = $resp.Content
-                if ($preview.Length -gt 240) {
-                  $preview = $preview.Substring(0, 240)
-                }
                 throw "Public manifest missing file_name. Content-Type=$contentType, BodyPreview=$preview"
               }
 
