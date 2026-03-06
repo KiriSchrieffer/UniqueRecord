@@ -1,4 +1,4 @@
-const MANIFEST_URL = "/downloads/latest.json";
+const MANIFEST_URL = `/downloads/latest.json?t=${Date.now()}`;
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "-";

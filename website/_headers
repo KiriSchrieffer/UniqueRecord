@@ -1,0 +1,8 @@
+/downloads/latest.json
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/download.html
+  Cache-Control: no-cache, max-age=0
+
+/assets/download.js
+  Cache-Control: no-cache, max-age=0
