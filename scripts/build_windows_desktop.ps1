@@ -88,6 +88,28 @@ Invoke-Step -Name "pip install desktop deps" -Action {
     & $PythonExe -m pip install -r requirements-desktop.txt
 }
 
+Invoke-Step -Name "generate build metadata" -Action {
+    $installerScript = Join-Path $ProjectRoot "installer\UniqueRecord.iss"
+    $version = "1.0.0"
+    if (Test-Path $installerScript) {
+        $matched = Select-String -Path $installerScript -Pattern '#define\s+MyAppVersion\s+"([^"]+)"' | Select-Object -First 1
+        if ($matched -and $matched.Matches.Count -gt 0) {
+            $version = $matched.Matches[0].Groups[1].Value
+        }
+    }
+    $buildInfo = [ordered]@{
+        version = $version
+        built_at_utc = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss +00:00")
+        channel = "stable"
+    } | ConvertTo-Json -Depth 4
+
+    $buildInfoPath = Join-Path $ProjectRoot "build\build_info.json"
+    $buildDir = Split-Path -Parent $buildInfoPath
+    New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($buildInfoPath, $buildInfo, $encoding)
+}
+
 $appIconPath = Join-Path $ProjectRoot "assets\branding\unique_record_logo_i.ico"
 if (Test-Path -LiteralPath $appIconPath) {
     Write-Host "==> generate app icon (Logo I) [skip: existing icon found]"
@@ -101,6 +123,7 @@ $PyInstallerWorkPath = "build/pyinstaller_$((Get-Date).ToString('yyyyMMdd_HHmmss
 $RuntimeAddDataSpec = (Join-Path $ProjectRoot "build/runtime_package/runtime") + ";runtime"
 
 Invoke-Step -Name "pyinstaller" -Action {
+    $buildInfoAddDataSpec = (Join-Path $ProjectRoot "build\build_info.json") + ";build"
     & $PythonExe -m PyInstaller `
         --noconfirm `
         --clean `
@@ -111,6 +134,7 @@ Invoke-Step -Name "pyinstaller" -Action {
         --add-data "src;src" `
         --add-data "configs;configs" `
         --add-data "$RuntimeAddDataSpec" `
+        --add-data "$buildInfoAddDataSpec" `
         --add-data "design/figma/fluent_v1/dist;design/figma/fluent_v1/dist" `
         --hidden-import "webview.platforms.edgechromium" `
         scripts/run_desktop_app.py

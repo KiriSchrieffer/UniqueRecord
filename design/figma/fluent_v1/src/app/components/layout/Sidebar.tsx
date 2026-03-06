@@ -8,6 +8,7 @@ import {
   ScanEye,
   Palette,
   Package,
+  UserCircle2,
 } from 'lucide-react';
 import { UniqueRecordLogoSymbol } from '../branding/UniqueRecordLogo';
 import { useI18n } from '../../i18n';
@@ -30,6 +31,7 @@ export function Sidebar() {
         { path: '/history', label: tr('视频管理', 'Video Management'), icon: <History size={18} /> },
         { path: '/settings/recording', label: tr('录制设置', 'Recording Settings'), icon: <Video size={18} /> },
         { path: '/settings/detection', label: tr('检测与引擎', 'Detection & Engine'), icon: <ScanEye size={18} /> },
+        { path: '/account-update', label: tr('账号与更新', 'Account & Updates'), icon: <UserCircle2 size={18} /> },
         { path: '/diagnostics', label: tr('诊断中心', 'Diagnostics'), icon: <Stethoscope size={18} /> },
       ];
       if (isEngineeringUiEnabled) {

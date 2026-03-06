@@ -7,6 +7,7 @@ import SettingsRecording from "./pages/SettingsRecording";
 import SettingsDetection from "./pages/SettingsDetection";
 import Diagnostics from "./pages/Diagnostics";
 import MiniPanel from "./pages/MiniPanel";
+import AccountUpdate from "./pages/AccountUpdate";
 import DesignTokens from "./pages/DesignTokens";
 import ComponentLibrary from "./pages/ComponentLibrary";
 import { isEngineeringUiEnabled } from "./lib/featureFlags";
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
   {
     path: "/mini-panel",
     Component: MiniPanel,
+  },
+  {
+    path: "/account-update",
+    Component: AccountUpdate,
   },
   ...(isEngineeringUiEnabled
     ? [

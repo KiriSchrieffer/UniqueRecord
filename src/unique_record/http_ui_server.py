@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import pathlib
 import threading
+import time
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs, unquote, urlparse
 
+from .app_update import AppUpdateService
+from .auth_local import LocalAuthService
 from .ui_backend import RuntimeBridgeOptions, RuntimeBridgeService
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -31,6 +35,15 @@ DEFAULT_API_ROUTES = [
     "POST /api/fs/open-path",
     "POST /api/fs/open-recordings-dir",
     "POST /api/fs/select-directory",
+    "GET /api/auth/status",
+    "POST /api/auth/register",
+    "POST /api/auth/login",
+    "POST /api/auth/logout",
+    "POST /api/auth/google/start",
+    "GET /api/auth/google/callback?state=<state>&code=<code>",
+    "GET /api/update/status",
+    "POST /api/update/download",
+    "POST /api/update/apply",
 ]
 
 
@@ -44,6 +57,8 @@ class UiBackendHttpOptions:
     autostart: bool = False
     web_root: str | pathlib.Path | None = DEFAULT_WEB_ROOT
     recorder_options: dict[str, Any] | None = None
+    resource_root: str | pathlib.Path | None = None
+    release_manifest_url: str = "https://download.uniquerecord.com/downloads/latest.json"
 
 
 class UiBackendHttpServer:
@@ -54,6 +69,8 @@ class UiBackendHttpServer:
     def __init__(self, options: UiBackendHttpOptions) -> None:
         self._options = options
         app_root = pathlib.Path(options.app_root).resolve() if options.app_root else None
+        resource_root = pathlib.Path(options.resource_root).resolve() if options.resource_root else PROJECT_ROOT
+        data_root = app_root or PROJECT_ROOT
         self._service = RuntimeBridgeService(
             RuntimeBridgeOptions(
                 config_path=options.config_path,
@@ -62,8 +79,48 @@ class UiBackendHttpServer:
                 recorder_options=options.recorder_options,
             )
         )
+        global_cfg = self._service.runtime.config.get("global", {})
+        if not isinstance(global_cfg, dict):
+            global_cfg = {}
+        auth_cfg = global_cfg.get("auth", {})
+        if not isinstance(auth_cfg, dict):
+            auth_cfg = {}
+        google_cfg = auth_cfg.get("google", {})
+        if not isinstance(google_cfg, dict):
+            google_cfg = {}
+        google_client_id = str(google_cfg.get("client_id") or os.environ.get("UR_GOOGLE_CLIENT_ID") or "").strip()
+        google_client_secret = str(
+            google_cfg.get("client_secret") or os.environ.get("UR_GOOGLE_CLIENT_SECRET") or ""
+        ).strip()
+
+        updates_cfg = global_cfg.get("updates", {})
+        if not isinstance(updates_cfg, dict):
+            updates_cfg = {}
+        release_manifest_url = (
+            str(updates_cfg.get("release_manifest_url") or options.release_manifest_url).strip()
+            or options.release_manifest_url
+        )
+
+        self._auth_service = LocalAuthService(
+            data_root=data_root,
+            oauth_host=options.host,
+            oauth_port=options.port,
+            google_client_id=google_client_id,
+            google_client_secret=google_client_secret,
+        )
+        self._update_service = AppUpdateService(
+            data_root=data_root,
+            manifest_url=release_manifest_url,
+            build_info_path=(resource_root / "build" / "build_info.json"),
+        )
         self._web_root = _resolve_optional_dir(options.web_root)
-        handler_cls = _build_handler(service=self._service, web_root=self._web_root)
+        handler_cls = _build_handler(
+            service=self._service,
+            auth_service=self._auth_service,
+            update_service=self._update_service,
+            web_root=self._web_root,
+            request_process_exit=self._request_process_exit,
+        )
         self._server = ThreadingHTTPServer((options.host, options.port), handler_cls)
         self._autostart_applied = False
         self._background_thread: threading.Thread | None = None
@@ -135,11 +192,21 @@ class UiBackendHttpServer:
             if self._options.autostart:
                 self._service.start_service()
 
+    def _request_process_exit(self, *, delay_seconds: float = 1.2) -> None:
+        def _exit_later() -> None:
+            time.sleep(max(0.2, delay_seconds))
+            os._exit(0)
+
+        threading.Thread(target=_exit_later, name="unique-record-updater-exit", daemon=True).start()
+
 
 def _build_handler(
     *,
     service: RuntimeBridgeService,
+    auth_service: LocalAuthService,
+    update_service: AppUpdateService,
     web_root: pathlib.Path | None,
+    request_process_exit: Callable[..., None],
 ) -> type[BaseHTTPRequestHandler]:
     class ApiHandler(BaseHTTPRequestHandler):
         def do_OPTIONS(self) -> None:  # noqa: N802
@@ -167,6 +234,50 @@ def _build_handler(
 
             if path == "/api/audio/devices":
                 self._send_json(HTTPStatus.OK, service.list_audio_devices())
+                return
+
+            if path == "/api/auth/status":
+                self._send_json(HTTPStatus.OK, auth_service.status())
+                return
+
+            if path == "/api/update/status":
+                self._send_json(HTTPStatus.OK, update_service.status())
+                return
+
+            if path == "/api/auth/google/callback":
+                state = str(query.get("state", [""])[0] or "")
+                code = str(query.get("code", [""])[0] or "")
+                error = str(query.get("error", [""])[0] or "")
+                if error:
+                    self._send_html(
+                        HTTPStatus.BAD_REQUEST,
+                        _build_oauth_result_html(
+                            title="Google Login Failed",
+                            message=f"Google returned an error: {error}",
+                            success=False,
+                        ),
+                    )
+                    return
+                try:
+                    auth_service.complete_google_login(state=state, code=code)
+                except ValueError as exc:
+                    self._send_html(
+                        HTTPStatus.BAD_REQUEST,
+                        _build_oauth_result_html(
+                            title="Google Login Failed",
+                            message=str(exc),
+                            success=False,
+                        ),
+                    )
+                    return
+                self._send_html(
+                    HTTPStatus.OK,
+                    _build_oauth_result_html(
+                        title="Google Login Successful",
+                        message="You can close this browser tab and return to UniqueRecord.",
+                        success=True,
+                    ),
+                )
                 return
 
             if path == "/api/media/session":
@@ -310,6 +421,77 @@ def _build_handler(
                 self._send_json(HTTPStatus.OK, {"ok": True, **result})
                 return
 
+            if path == "/api/auth/register":
+                email = payload.get("email")
+                password = payload.get("password")
+                display_name = payload.get("displayName", payload.get("display_name", ""))
+                if not isinstance(email, str) or not isinstance(password, str):
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "email and password are required"})
+                    return
+                if not isinstance(display_name, str):
+                    display_name = ""
+                try:
+                    result = auth_service.register_email(
+                        email=email,
+                        password=password,
+                        display_name=display_name,
+                    )
+                except ValueError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    return
+                self._send_json(HTTPStatus.OK, {"ok": True, **result})
+                return
+
+            if path == "/api/auth/login":
+                email = payload.get("email")
+                password = payload.get("password")
+                if not isinstance(email, str) or not isinstance(password, str):
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "email and password are required"})
+                    return
+                try:
+                    result = auth_service.login_email(email=email, password=password)
+                except ValueError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    return
+                self._send_json(HTTPStatus.OK, {"ok": True, **result})
+                return
+
+            if path == "/api/auth/logout":
+                self._send_json(HTTPStatus.OK, {"ok": True, **auth_service.logout()})
+                return
+
+            if path == "/api/auth/google/start":
+                try:
+                    result = auth_service.start_google_login()
+                except ValueError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    return
+                self._send_json(HTTPStatus.OK, {"ok": True, **result})
+                return
+
+            if path == "/api/update/download":
+                try:
+                    result = update_service.download_latest_installer()
+                except RuntimeError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    return
+                self._send_json(HTTPStatus.OK, {"ok": True, **result, "status": update_service.status()})
+                return
+
+            if path == "/api/update/apply":
+                installer_path = payload.get("installerPath")
+                if installer_path is not None and not isinstance(installer_path, str):
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": "installerPath must be a string"})
+                    return
+                try:
+                    result = update_service.apply_installer(installer_path=installer_path)
+                except RuntimeError as exc:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                    return
+                request_process_exit(delay_seconds=1.2)
+                self._send_json(HTTPStatus.OK, {"ok": True, **result, "will_exit": True})
+                return
+
             self._send_json(HTTPStatus.NOT_FOUND, {"error": f"route not found: {path}"})
 
         def log_message(self, format: str, *args: Any) -> None:
@@ -320,6 +502,15 @@ def _build_handler(
             self.send_response(status)
             self._send_cors_headers()
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_html(self, status: HTTPStatus, html: str) -> None:
+            body = html.encode("utf-8")
+            self.send_response(status)
+            self._send_cors_headers()
+            self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -516,3 +707,29 @@ def _parse_http_byte_range(
         return (start, end)
     except ValueError:
         return "invalid"
+
+
+def _build_oauth_result_html(*, title: str, message: str, success: bool) -> str:
+    border = "#0f6cbd" if success else "#d13438"
+    background = "#f3f9fd" if success else "#fef3f2"
+    safe_title = title.replace("<", "&lt;").replace(">", "&gt;")
+    safe_message = message.replace("<", "&lt;").replace(">", "&gt;")
+    return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{safe_title}</title>
+    <style>
+      body {{ font-family: Segoe UI, Arial, sans-serif; background: #f7f8fa; margin: 0; padding: 36px; }}
+      .card {{ max-width: 680px; margin: 0 auto; background: {background}; border: 1px solid {border}; border-radius: 12px; padding: 20px; }}
+      h1 {{ margin: 0 0 12px 0; font-size: 20px; color: #202123; }}
+      p {{ margin: 0; color: #3b3d40; line-height: 1.5; }}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>{safe_title}</h1>
+      <p>{safe_message}</p>
+    </div>
+  </body>
+</html>"""

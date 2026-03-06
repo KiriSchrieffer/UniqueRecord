@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import pathlib
 import sys
 
@@ -34,6 +35,7 @@ RESOURCE_ROOT = _find_resource_root()
 sys.path.insert(0, str(RESOURCE_ROOT / "src"))
 
 from unique_record.http_ui_server import UiBackendHttpOptions, UiBackendHttpServer
+from unique_record.app_paths import ensure_user_config, get_user_data_root
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,7 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     app_root = pathlib.Path(args.app_root).resolve() if args.app_root else _default_app_root()
-    config_path = pathlib.Path(args.config).resolve() if args.config else _default_config_path()
+    config_path = pathlib.Path(args.config).resolve() if args.config else _default_config_path(app_root=app_root)
     web_root = pathlib.Path(args.web_root).resolve() if args.web_root else _default_web_root()
     native_host_path = (
         pathlib.Path(args.native_host).resolve() if args.native_host else _default_native_host_path()
@@ -116,6 +118,7 @@ def main() -> int:
             port=args.port,
             config_path=config_path,
             app_root=app_root,
+            resource_root=RESOURCE_ROOT,
             autostart=not args.no_autostart,
             web_root=web_root,
             recorder_options={
@@ -148,13 +151,13 @@ def main() -> int:
 
 
 def _default_app_root() -> pathlib.Path:
-    if getattr(sys, "frozen", False):
-        return pathlib.Path(sys.executable).resolve().parent
-    return RESOURCE_ROOT
+    return get_user_data_root()
 
 
-def _default_config_path() -> pathlib.Path:
-    return (RESOURCE_ROOT / "configs" / "game_adapters.template.json").resolve()
+def _default_config_path(*, app_root: pathlib.Path) -> pathlib.Path:
+    config_path = ensure_user_config(user_data_root=app_root, resource_root=RESOURCE_ROOT)
+    _migrate_legacy_recordings_if_needed(app_root=app_root)
+    return config_path
 
 
 def _default_web_root() -> pathlib.Path:
@@ -196,6 +199,19 @@ def _is_vite_dist_directory(web_root: pathlib.Path) -> bool:
         return False
     assets_dir = web_root / "assets"
     return assets_dir.is_dir()
+
+
+def _migrate_legacy_recordings_if_needed(*, app_root: pathlib.Path) -> None:
+    legacy_recordings = (RESOURCE_ROOT / "recordings").resolve()
+    if not legacy_recordings.exists() or not legacy_recordings.is_dir():
+        return
+    target = (app_root / "recordings").resolve()
+    if target.exists():
+        return
+    try:
+        shutil.copytree(legacy_recordings, target)
+    except Exception:
+        return
 
 
 if __name__ == "__main__":

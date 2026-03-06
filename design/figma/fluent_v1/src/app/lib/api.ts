@@ -150,6 +150,59 @@ export interface DeleteHistoryItemsResponse {
   remaining_count: number;
 }
 
+export interface AuthUserProfile {
+  id: string;
+  provider: 'email' | 'google' | string;
+  email: string;
+  display_name: string;
+  created_at_unix: number;
+}
+
+export interface AuthStatusResponse {
+  authenticated: boolean;
+  user: AuthUserProfile | null;
+  google_enabled: boolean;
+}
+
+export interface UpdateBuildInfo {
+  version: string;
+  built_at_utc: string;
+  channel: string;
+}
+
+export interface UpdateManifestInfo {
+  version?: string;
+  file_name?: string;
+  url?: string;
+  size_bytes?: number;
+  sha256?: string;
+  published_at?: string;
+  notes?: string[];
+}
+
+export interface UpdateStatusResponse {
+  manifest_url: string;
+  current: UpdateBuildInfo;
+  latest: UpdateManifestInfo | null;
+  update_available: boolean;
+  update_reason: string;
+  downloaded_installer_path: string | null;
+}
+
+export interface DownloadUpdateResponse {
+  ok: boolean;
+  installer_path: string;
+  file_name: string;
+  size_bytes: number | null;
+  status: UpdateStatusResponse;
+}
+
+export interface ApplyUpdateResponse {
+  ok: boolean;
+  installer_path: string;
+  will_exit: boolean;
+}
+
 const DEFAULT_API_BASE = import.meta.env.VITE_UNIQUE_RECORD_API_BASE || '';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -291,6 +344,73 @@ export async function deleteHistoryItems(
       sessionIds,
       deleteFiles: Boolean(options?.deleteFiles),
     }),
+  });
+}
+
+export async function getAuthStatus(): Promise<AuthStatusResponse> {
+  return request<AuthStatusResponse>('/api/auth/status');
+}
+
+export async function registerWithEmail(
+  payload: { email: string; password: string; displayName?: string }
+): Promise<AuthStatusResponse> {
+  const resp = await request<{ ok: boolean } & AuthStatusResponse>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return {
+    authenticated: resp.authenticated,
+    user: resp.user,
+    google_enabled: resp.google_enabled,
+  };
+}
+
+export async function loginWithEmail(payload: { email: string; password: string }): Promise<AuthStatusResponse> {
+  const resp = await request<{ ok: boolean } & AuthStatusResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return {
+    authenticated: resp.authenticated,
+    user: resp.user,
+    google_enabled: resp.google_enabled,
+  };
+}
+
+export async function logoutAccount(): Promise<AuthStatusResponse> {
+  const resp = await request<{ ok: boolean } & AuthStatusResponse>('/api/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return {
+    authenticated: resp.authenticated,
+    user: resp.user,
+    google_enabled: resp.google_enabled,
+  };
+}
+
+export async function startGoogleLogin(): Promise<{ ok: boolean; auth_url: string }> {
+  return request<{ ok: boolean; auth_url: string }>('/api/auth/google/start', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function getUpdateStatus(): Promise<UpdateStatusResponse> {
+  return request<UpdateStatusResponse>('/api/update/status');
+}
+
+export async function downloadLatestUpdate(): Promise<DownloadUpdateResponse> {
+  return request<DownloadUpdateResponse>('/api/update/download', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function applyUpdate(installerPath?: string): Promise<ApplyUpdateResponse> {
+  return request<ApplyUpdateResponse>('/api/update/apply', {
+    method: 'POST',
+    body: JSON.stringify(installerPath ? { installerPath } : {}),
   });
 }
 

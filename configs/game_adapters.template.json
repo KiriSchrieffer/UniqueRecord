@@ -7,6 +7,15 @@
     "ui": {
       "language": "zh-CN"
     },
+    "auth": {
+      "google": {
+        "client_id": "",
+        "client_secret": ""
+      }
+    },
+    "updates": {
+      "release_manifest_url": "https://download.uniquerecord.com/downloads/latest.json"
+    },
     "recordings_output_dir": "recordings",
     "recordings_index_path": "recordings/recording_index.jsonl",
     "native_recorder": {
