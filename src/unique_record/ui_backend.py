@@ -425,21 +425,22 @@ class RuntimeBridgeService:
         }
 
     def resolve_recordings_output_dir(self) -> Path | None:
+        settings = self._runtime.config.get("global", {})
+        if isinstance(settings, dict):
+            raw = settings.get("recordings_output_dir") or settings.get("recordings_dir")
+            if isinstance(raw, str) and raw.strip():
+                value = Path(raw)
+                if value.is_absolute():
+                    return value.resolve()
+                # Relative path follows runtime app root behavior.
+                config_root = self._config_path.parent.parent
+                return (config_root / value).resolve()
+
+        # Fallback to session index directory when output dir is not explicitly configured.
         index_path = self._runtime.session_index_path
         if index_path is not None:
             return index_path.parent.resolve()
-        settings = self._runtime.config.get("global", {})
-        if not isinstance(settings, dict):
-            return None
-        raw = settings.get("recordings_output_dir") or settings.get("recordings_dir")
-        if not isinstance(raw, str) or not raw.strip():
-            return None
-        value = Path(raw)
-        if value.is_absolute():
-            return value.resolve()
-        # Relative path follows runtime app root behavior.
-        config_root = self._config_path.parent.parent
-        return (config_root / value).resolve()
+        return None
 
     def open_in_explorer(
         self,
