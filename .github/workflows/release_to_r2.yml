@@ -1,0 +1,126 @@
+name: Release Installer To R2
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version written into website/downloads/latest.json"
+        required: true
+        default: "1.0.0"
+      skip_frontend_build:
+        description: "Skip frontend rebuild during packaging"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-to-r2
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_R2_BUCKET: ${{ secrets.CF_R2_BUCKET }}
+      CF_R2_PUBLIC_BASE_URL: ${{ secrets.CF_R2_PUBLIC_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate required secrets
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CF_ACCOUNT_ID)) { throw "Missing secret: CF_ACCOUNT_ID" }
+          if ([string]::IsNullOrWhiteSpace($env:CF_API_TOKEN)) { throw "Missing secret: CF_API_TOKEN" }
+          if ([string]::IsNullOrWhiteSpace($env:CF_R2_BUCKET)) { throw "Missing secret: CF_R2_BUCKET" }
+          if ([string]::IsNullOrWhiteSpace($env:CF_R2_PUBLIC_BASE_URL)) { throw "Missing secret: CF_R2_PUBLIC_BASE_URL" }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          if ("${{ inputs.skip_frontend_build }}" -eq "true") {
+            powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1 -SkipFrontendBuild
+          } else {
+            powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1
+          }
+
+      - name: Prepare Pages + R2 artifacts
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem .\dist_installer -File -Filter "UniqueRecord_Setup_*.exe" |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $installer) {
+            throw "Installer not found in dist_installer."
+          }
+
+          powershell -ExecutionPolicy Bypass -File .\scripts\prepare_cloudflare_pages_r2.ps1 `
+            -InstallerPath $installer.FullName `
+            -Version "${{ inputs.version }}" `
+            -R2PublicBaseUrl $env:CF_R2_PUBLIC_BASE_URL
+
+          "INSTALLER_NAME=$($installer.Name)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Wrangler
+        shell: pwsh
+        run: npm install -g wrangler@4
+
+      - name: Upload installer + manifest to R2
+        shell: pwsh
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          $uploadRoot = (Resolve-Path .\build\cloudflare_r2_upload\downloads).Path
+          Get-ChildItem -Path $uploadRoot -File | ForEach-Object {
+            $key = "downloads/$($_.Name)"
+            Write-Host "Uploading to R2: $key"
+            wrangler r2 object put "$env:CF_R2_BUCKET/$key" --file $_.FullName
+          }
+
+      - name: Commit website manifest for Pages auto deploy
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/downloads/latest.json
+          if (git diff --cached --quiet) {
+            Write-Host "No manifest changes to commit."
+            exit 0
+          }
+          git commit -m "chore(release): update website download manifest (${{ inputs.version }})"
+          git push
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          Write-Host "Release complete."
+          Write-Host "Version: ${{ inputs.version }}"
+          Write-Host "Installer: $env:INSTALLER_NAME"
+          Write-Host "R2 path: downloads/$env:INSTALLER_NAME"
