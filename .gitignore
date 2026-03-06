@@ -42,3 +42,10 @@ runtime/windows_capture/host/**/obj/
 
 # Generated spec files
 *.spec
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
