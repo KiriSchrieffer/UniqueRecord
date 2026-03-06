@@ -1,10 +1,10 @@
 ﻿{
     "version":  "1.0.0",
-    "file_name":  "UniqueRecord_Setup_1.0.0_20260305_195609.exe",
-    "url":  "https://download.uniquerecord.com/downloads/UniqueRecord_Setup_1.0.0_20260305_195609.exe",
-    "size_bytes":  48762158,
-    "sha256":  "87c0543a060904ca2c3e01677e81bdd3cd71dad3d5efe1e8a2c7d8139d0fd90c",
-    "published_at":  "2026-03-05 19:57:37 -08:00",
+    "file_name":  "UniqueRecord_Setup_1.0.0_20260306_041158.exe",
+    "url":  "https://download.uniquerecord.com/downloads/UniqueRecord_Setup_1.0.0_20260306_041158.exe",
+    "size_bytes":  46612975,
+    "sha256":  "61a4f8915fa8eaef72c73f177806c73e7bf1788073b3b094e236eb044c154e60",
+    "published_at":  "2026-03-06 04:12:37 +00:00",
     "notes":  [
                   "Built-in Windows native recorder runtime (ready after install)",
                   "Automatic match detection and recording for League of Legends",
