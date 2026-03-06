@@ -11,7 +11,7 @@ on:
         description: "Skip frontend rebuild during packaging"
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
@@ -64,9 +64,16 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
-          if ("${{ inputs.skip_frontend_build }}" -eq "true") {
+          $distIndex = ".\design\figma\fluent_v1\dist\index.html"
+          $skipRequested = "${{ inputs.skip_frontend_build }}" -eq "true"
+          $distExists = Test-Path $distIndex
+          if ($skipRequested -and $distExists) {
+            Write-Host "skip_frontend_build=true and dist exists, skip frontend build."
             powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1 -SkipFrontendBuild
           } else {
+            if ($skipRequested -and -not $distExists) {
+              Write-Host "dist not found, fallback to frontend build."
+            }
             powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1
           }
 
