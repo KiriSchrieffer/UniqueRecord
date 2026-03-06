@@ -45,6 +45,17 @@ function Resolve-InstallerFile {
     return $latestInstaller
 }
 
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Content
+    )
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+}
+
 $resolvedWebsiteRoot = (Resolve-Path -LiteralPath $WebsiteRoot).Path
 $resolvedPagesOutputRoot = Resolve-OrCreatePath -PathValue $PagesOutputRoot
 $resolvedR2OutputRoot = Resolve-OrCreatePath -PathValue $R2OutputRoot
@@ -123,13 +134,13 @@ $manifestJson = $manifest | ConvertTo-Json -Depth 4
 $pagesManifestPath = Join-Path $pagesDownloadsDir "latest.json"
 $r2ManifestPath = Join-Path $r2Root "latest.json"
 
-Set-Content -LiteralPath $pagesManifestPath -Value $manifestJson -Encoding UTF8
-Set-Content -LiteralPath $r2ManifestPath -Value $manifestJson -Encoding UTF8
+Write-Utf8NoBom -Path $pagesManifestPath -Content $manifestJson
+Write-Utf8NoBom -Path $r2ManifestPath -Content $manifestJson
 
 # Keep repository website folder upload-safe for Cloudflare Pages manual upload.
 $websiteDownloadsDir = Join-Path $resolvedWebsiteRoot "downloads"
 New-Item -ItemType Directory -Path $websiteDownloadsDir -Force | Out-Null
-Set-Content -LiteralPath (Join-Path $websiteDownloadsDir "latest.json") -Value $manifestJson -Encoding UTF8
+Write-Utf8NoBom -Path (Join-Path $websiteDownloadsDir "latest.json") -Content $manifestJson
 Get-ChildItem -LiteralPath $websiteDownloadsDir -File -Filter "*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
     try {
         Remove-Item -LiteralPath $_.FullName -Force

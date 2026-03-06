@@ -10,6 +10,17 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
 
+function Write-Utf8NoBom {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Content
+    )
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $encoding)
+}
+
 $resolvedWebsiteRoot = (Resolve-Path $WebsiteRoot).Path
 $downloadsDir = Join-Path $resolvedWebsiteRoot "downloads"
 if (-not (Test-Path $downloadsDir)) {
@@ -58,7 +69,8 @@ $manifest = [ordered]@{
 }
 
 $manifestPath = Join-Path $downloadsDir "latest.json"
-$manifest | ConvertTo-Json -Depth 4 | Set-Content $manifestPath -Encoding UTF8
+$manifestJson = $manifest | ConvertTo-Json -Depth 4
+Write-Utf8NoBom -Path $manifestPath -Content $manifestJson
 
 Write-Host "Published website download metadata."
 Write-Host "Installer: $targetInstallerPath"

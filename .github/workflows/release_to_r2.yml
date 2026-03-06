@@ -108,7 +108,21 @@ jobs:
           Get-ChildItem -Path $uploadRoot -File | ForEach-Object {
             $key = "downloads/$($_.Name)"
             Write-Host "Uploading to R2: $key"
-            wrangler r2 object put "$env:CF_R2_BUCKET/$key" --file $_.FullName --remote
+            if ($_.Name -ieq "latest.json") {
+              wrangler r2 object put "$env:CF_R2_BUCKET/$key" `
+                --file $_.FullName `
+                --content-type "application/json; charset=utf-8" `
+                --cache-control "no-store, no-cache, must-revalidate, max-age=0" `
+                --remote
+            } elseif ($_.Extension -ieq ".exe") {
+              wrangler r2 object put "$env:CF_R2_BUCKET/$key" `
+                --file $_.FullName `
+                --content-type "application/vnd.microsoft.portable-executable" `
+                --cache-control "public, max-age=31536000, immutable" `
+                --remote
+            } else {
+              wrangler r2 object put "$env:CF_R2_BUCKET/$key" --file $_.FullName --remote
+            }
           }
 
       - name: Verify remote R2 manifest
