@@ -170,6 +170,7 @@ jobs:
               } else {
                 $contentText = [string]$resp.Content
               }
+              $contentText = $contentText.TrimStart([char]0xFEFF)
 
               $preview = ($contentText -replace "\s+", " ").Trim()
               if ([string]::IsNullOrWhiteSpace($preview)) {
