@@ -138,6 +138,18 @@ jobs:
             throw "CF_R2_PUBLIC_BASE_URL is empty."
           }
 
+          try {
+            $baseUri = [Uri]$baseUrl
+          } catch {
+            throw "CF_R2_PUBLIC_BASE_URL is not a valid URL: $baseUrl"
+          }
+          if ([string]::IsNullOrWhiteSpace($baseUri.Host)) {
+            throw "CF_R2_PUBLIC_BASE_URL has no host: $baseUrl"
+          }
+          if ($baseUri.AbsolutePath -ne "/") {
+            throw "CF_R2_PUBLIC_BASE_URL must be domain root only (no path): $baseUrl"
+          }
+
           $maxAttempts = 18
           $sleepSeconds = 10
           $verified = $false
@@ -152,22 +164,36 @@ jobs:
               }
 
               $manifest = $resp.Content | ConvertFrom-Json
-              if ($manifest.file_name -ne $env:INSTALLER_NAME) {
-                throw "Expected $env:INSTALLER_NAME, got $($manifest.file_name)"
+              $manifestFileName = $manifest.file_name
+              if ([string]::IsNullOrWhiteSpace($manifestFileName)) {
+                $contentType = $resp.Headers["Content-Type"]
+                $preview = $resp.Content
+                if ($preview.Length -gt 240) {
+                  $preview = $preview.Substring(0, 240)
+                }
+                throw "Public manifest missing file_name. Content-Type=$contentType, BodyPreview=$preview"
+              }
+
+              if ($manifestFileName -ne $env:INSTALLER_NAME) {
+                throw "Expected $env:INSTALLER_NAME, got $manifestFileName"
               }
 
               if ([string]::IsNullOrWhiteSpace($manifest.url)) {
                 throw "Public manifest has empty url field."
               }
 
-              Write-Host "Public manifest verification passed: $($manifest.file_name)"
+              Write-Host "Public manifest verification passed: $manifestFileName"
               $verified = $true
               break
             } catch {
-              if ($attempt -eq $maxAttempts) {
-                throw "Public download domain verification failed: $($_.Exception.Message)"
+              $errorMessage = $_.Exception.Message
+              if ($errorMessage -like "Public manifest missing file_name*") {
+                throw "Public download domain verification failed (non-retryable): $errorMessage"
               }
-              Write-Host "Public manifest not ready yet: $($_.Exception.Message)"
+              if ($attempt -eq $maxAttempts) {
+                throw "Public download domain verification failed: $errorMessage"
+              }
+              Write-Host "Public manifest not ready yet: $errorMessage"
               Start-Sleep -Seconds $sleepSeconds
             }
           }
