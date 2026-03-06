@@ -1,0 +1,8 @@
+/* Fluent Design Typography - Using Segoe UI Variable or Inter as fallback */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+body {
+  font-family: 'Segoe UI Variable', 'Segoe UI', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

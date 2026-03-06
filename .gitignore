@@ -1,0 +1,44 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Local runtime data
+recordings/
+*.log
+config/
+tests/_tmp/
+
+# Build artifacts
+build/
+dist/
+dist_installer/
+design/figma/fluent_v1/dist/
+design/figma/fluent_v1/node_modules/
+runtime/windows_capture_singlefile_test/
+
+# Bundled runtime binaries (keep host source only)
+runtime/windows_capture/*
+!runtime/windows_capture/host/
+!runtime/windows_capture/host/**
+
+# .NET build outputs
+runtime/windows_capture/host/**/bin/
+runtime/windows_capture/host/**/obj/
+
+# Generated spec files
+*.spec

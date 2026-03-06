@@ -1,0 +1,210 @@
+{
+  "schema_version": 2,
+  "global": {
+    "poll_interval_ms": 500,
+    "max_session_timeout_minutes": 240,
+    "manual_override_priority": true,
+    "ui": {
+      "language": "zh-CN"
+    },
+    "recordings_output_dir": "recordings",
+    "recordings_index_path": "recordings/recording_index.jsonl",
+    "native_recorder": {
+      "backend_mode": "auto",
+      "host_relative_path": "runtime/windows_capture/UniqueRecord.CaptureHost.exe",
+      "filename_template": "{game}_{start_ts}_{session_id}.{ext}",
+      "process_stop_timeout_seconds": 8
+    }
+  },
+  "games": [
+    {
+      "id": "league_of_legends",
+      "display_name": "League of Legends",
+      "enabled": true,
+      "signals": {
+        "S1": {
+          "name": "lcu_gameflow_phase",
+          "type": "lcu_api",
+          "required": false,
+          "valid_values": [
+            "None",
+            "Lobby",
+            "Matchmaking",
+            "ReadyCheck",
+            "ChampSelect",
+            "InProgress",
+            "WaitingForStats",
+            "EndOfGame"
+          ]
+        },
+        "S2": {
+          "name": "game_process_running",
+          "type": "process_running",
+          "process_names": [
+            "League of Legends.exe"
+          ],
+          "required": true
+        },
+        "S3": {
+          "name": "game_window_visible",
+          "type": "window_visible",
+          "title_patterns": [
+            "League of Legends"
+          ],
+          "required": false
+        },
+        "S4": {
+          "name": "client_process_running",
+          "type": "process_running",
+          "process_names": [
+            "LeagueClientUx.exe"
+          ],
+          "required": false
+        }
+      },
+      "rules": {
+        "start_rules": [
+          {
+            "id": "start_by_gameflow",
+            "priority": 1,
+            "all_conditions": [
+              {
+                "signal": "S1",
+                "operator": "eq",
+                "value": "InProgress"
+              },
+              {
+                "signal": "S2",
+                "operator": "eq",
+                "value": true
+              }
+            ],
+            "hold_seconds": 3,
+            "action": "start_recording"
+          },
+          {
+            "id": "start_by_process_window_fallback",
+            "priority": 2,
+            "requires_unavailable_signals": [
+              "S1"
+            ],
+            "all_conditions": [
+              {
+                "signal": "S2",
+                "operator": "eq",
+                "value": true
+              },
+              {
+                "signal": "S3",
+                "operator": "eq",
+                "value": true
+              }
+            ],
+            "hold_seconds": 8,
+            "action": "start_recording"
+          }
+        ],
+        "stop_rules": [
+          {
+            "id": "stop_by_gameflow",
+            "priority": 1,
+            "all_conditions": [
+              {
+                "signal": "S1",
+                "operator": "in",
+                "value": [
+                  "WaitingForStats",
+                  "EndOfGame"
+                ]
+              }
+            ],
+            "hold_seconds": 5,
+            "action": "stop_recording",
+            "reason_code": "normal_end"
+          },
+          {
+            "id": "stop_by_process_exit_fallback",
+            "priority": 2,
+            "all_conditions": [
+              {
+                "signal": "S2",
+                "operator": "eq",
+                "value": false
+              }
+            ],
+            "hold_seconds": 10,
+            "action": "stop_recording",
+            "reason_code": "process_exit_stop"
+          }
+        ],
+        "recovery": {
+          "process_drop_signal": "S2",
+          "grace_period_seconds": 90,
+          "resume_if_signal_restored": true,
+          "stop_reason_on_timeout": "abnormal_end"
+        },
+        "guards": {
+          "start_event_cooldown_seconds": 20,
+          "min_clip_seconds": 60,
+          "short_session_policy": "keep_and_mark"
+        },
+        "state_machine": {
+          "initial_state": "idle",
+          "transitions": [
+            {
+              "from": "idle",
+              "to": "pre_match",
+              "any_conditions": [
+                {
+                  "signal": "S4",
+                  "operator": "eq",
+                  "value": true
+                },
+                {
+                  "signal": "S3",
+                  "operator": "eq",
+                  "value": true
+                }
+              ]
+            },
+            {
+              "from": "pre_match",
+              "to": "in_match",
+              "trigger_rule_group": "start_rules"
+            },
+            {
+              "from": "in_match",
+              "to": "post_match",
+              "trigger_rule_group": "stop_rules"
+            },
+            {
+              "from": "post_match",
+              "to": "idle",
+              "hold_seconds": 20
+            }
+          ]
+        }
+      },
+      "event_codes": {
+        "manual_override": "manual_override",
+        "normal_end": "normal_end",
+        "process_exit_stop": "process_exit_stop",
+        "abnormal_end": "abnormal_end",
+        "short_session": "short_session"
+      },
+      "recording_profile": {
+        "resolution": "1920x1080",
+        "fps": 60,
+        "encoder": "auto",
+        "audio_codec": "aac",
+        "hardware_encoding_enabled": true,
+        "audio_input_device": "__default__",
+        "audio_input_enabled": true,
+        "audio_output_enabled": true,
+        "video_bitrate_kbps": 12000,
+        "audio_bitrate_kbps": 192,
+        "container": "mp4"
+      }
+    }
+  ]
+}
