@@ -1,0 +1,35 @@
+﻿<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="420" fill="#07111E"/>
+  <rect x="42" y="42" width="1196" height="336" rx="28" fill="#0C1729" stroke="#243B68"/>
+  <text x="82" y="112" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="18" letter-spacing="3">INSTALL FLOW</text>
+  <text x="82" y="170" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="44" font-weight="700">Website download to installed Windows app</text>
+  <g>
+    <rect x="84" y="230" width="264" height="96" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="116" y="268" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">STEP 1</text>
+    <text x="116" y="300" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Open download page</text>
+  </g>
+  <g>
+    <rect x="374" y="230" width="264" height="96" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="406" y="268" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">STEP 2</text>
+    <text x="406" y="300" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Download installer</text>
+  </g>
+  <g>
+    <rect x="664" y="230" width="264" height="96" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="696" y="268" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">STEP 3</text>
+    <text x="696" y="300" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Choose install path</text>
+  </g>
+  <g>
+    <rect x="954" y="230" width="242" height="96" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="986" y="268" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">STEP 4</text>
+    <text x="986" y="300" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Launch app</text>
+  </g>
+  <path d="M348 278H374" stroke="url(#line)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M638 278H664" stroke="url(#line)" stroke-width="4" stroke-linecap="round"/>
+  <path d="M928 278H954" stroke="url(#line)" stroke-width="4" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="line" x1="348" y1="278" x2="374" y2="278" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#70C8FF"/>
+      <stop offset="1" stop-color="#8EFDFF"/>
+    </linearGradient>
+  </defs>
+</svg>

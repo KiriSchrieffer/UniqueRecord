@@ -1,12 +1,12 @@
-<!doctype html>
-<html lang="zh-CN">
+﻿<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UniqueRecord - 下载</title>
+    <title>UniqueRecord | Download</title>
     <meta
       name="description"
-      content="下载 UniqueRecord Windows 安装器。查看版本、文件大小与 SHA-256 校验信息。"
+      content="Download the latest UniqueRecord Windows installer with version, hash and release notes."
     />
     <link rel="icon" type="image/png" href="/assets/logo.png" />
     <link rel="stylesheet" href="/assets/site.css" />
@@ -20,93 +20,108 @@
             <span>UniqueRecord</span>
           </a>
           <nav class="nav">
-            <a href="/">介绍</a>
-            <a href="/download.html">下载</a>
+            <a href="/">Overview</a>
+            <a href="/download.html">Download</a>
           </nav>
         </div>
       </header>
 
-      <section class="hero">
-        <div class="container hero-inner">
-          <div>
-            <span class="eyebrow">Download Center</span>
-            <h1>下载 UniqueRecord 安装器</h1>
-            <p class="lead">
-              下载安装后即可使用。下载页会自动读取最新发布清单，显示版本、大小和哈希。
-            </p>
-          </div>
-          <aside class="hero-card">
-            <h3>系统要求</h3>
-            <p>为保证录制和图形性能，请优先在主力游戏机上安装。</p>
-            <ul class="spec-list">
-              <li>操作系统：Windows 10 / 11（64 位）</li>
-              <li>安装权限：管理员权限</li>
-              <li>适配游戏：英雄联盟（现阶段）</li>
-              <li>建议空间：至少 10 GB 可用磁盘空间</li>
-            </ul>
-          </aside>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="container">
-          <h2>当前可下载版本</h2>
-          <p class="desc">下载按钮和版本信息优先由 <code>download.uniquerecord.com/downloads/latest.json</code> 驱动。</p>
-
-          <div class="download-box">
-            <div class="meta">
-              <div class="meta-row">
-                <span>版本</span>
-                <strong id="release-version">加载中...</strong>
-              </div>
-              <div class="meta-row">
-                <span>发布时间</span>
-                <strong id="release-time">加载中...</strong>
-              </div>
-              <div class="meta-row">
-                <span>文件大小</span>
-                <strong id="release-size">加载中...</strong>
-              </div>
-              <div class="meta-row">
-                <span>SHA-256</span>
-                <code id="release-hash">加载中...</code>
-              </div>
+      <main>
+        <section class="hero hero-download">
+          <div class="container hero-layout download-layout">
+            <div class="hero-copy">
+              <span class="eyebrow">Official Download Channel</span>
+              <h1>Download the current Windows build.</h1>
+              <p class="lead">
+                The download center reads the current release manifest and exposes the installer, publish time, file
+                size and verification hash from the active release channel.
+              </p>
             </div>
 
-            <div class="actions" style="margin-top: 16px">
-              <a id="download-btn" class="btn primary" href="#" download>下载 Windows 安装器</a>
-              <a class="btn ghost" href="/">返回介绍页</a>
+            <aside class="hero-panel info-panel">
+              <h3>System baseline</h3>
+              <ul class="spec-list">
+                <li>Windows 10 / 11</li>
+                <li>64-bit desktop environment</li>
+                <li>League of Legends support in the current release scope</li>
+                <li>Recommended free disk space for recordings and updates</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="container">
+            <div class="section-heading">
+              <span class="eyebrow subtle">Release Manifest</span>
+              <h2>Current downloadable release</h2>
+              <p class="desc">
+                Version metadata is driven by <code>download.uniquerecord.com/downloads/latest.json</code> with a
+                Pages fallback manifest.
+              </p>
             </div>
 
-            <div id="download-status" class="status">正在读取最新下载清单...</div>
-          </div>
+            <div class="download-shell">
+              <div class="download-summary">
+                <div class="summary-row">
+                  <span>Version</span>
+                  <strong id="release-version">Loading...</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Published at</span>
+                  <strong id="release-time">Loading...</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Package size</span>
+                  <strong id="release-size">Loading...</strong>
+                </div>
+                <div class="summary-row hash-row">
+                  <span>SHA-256</span>
+                  <code id="release-hash">Loading...</code>
+                </div>
+              </div>
 
-          <div class="grid" style="margin-top: 18px">
-            <article class="card">
-              <h3>安装步骤</h3>
-              <p>运行安装器，选择安装路径，完成后可从开始菜单或桌面快捷方式启动。</p>
-            </article>
-            <article class="card">
-              <h3>校验建议</h3>
-              <p>如你通过第三方渠道获取安装包，建议先核对 SHA-256 再执行安装。</p>
-            </article>
-            <article class="card">
-              <h3>更新策略</h3>
-              <p>建议始终使用下载页显示的最新版本，以获得修复和兼容性更新。</p>
-            </article>
-          </div>
+              <div class="download-actions">
+                <a id="download-btn" class="btn primary" href="#" download>Download Windows Installer</a>
+                <a class="btn ghost" href="/">Back to overview</a>
+              </div>
 
-          <div class="section" style="padding: 30px 0 0">
-            <h2 style="font-size: 28px; margin-bottom: 10px">版本说明</h2>
-            <ul id="release-notes" class="spec-list"></ul>
+              <div id="download-status" class="status">Loading the latest release manifest...</div>
+            </div>
+
+            <div class="feature-grid compact-grid">
+              <article class="feature-card">
+                <span class="card-kicker">Install</span>
+                <h3>Standard Windows setup</h3>
+                <p>Run the installer, choose the install location, then launch UniqueRecord from the installed app.</p>
+              </article>
+              <article class="feature-card">
+                <span class="card-kicker">Verify</span>
+                <h3>Hash available</h3>
+                <p>Use the published SHA-256 value when you need to verify the package before wider distribution.</p>
+              </article>
+              <article class="feature-card">
+                <span class="card-kicker">Updates</span>
+                <h3>Shared release channel</h3>
+                <p>The website download button and the in-app update flow are designed to read the same manifest.</p>
+              </article>
+            </div>
+
+            <div class="notes-panel">
+              <div class="section-heading inline-heading">
+                <span class="eyebrow subtle">Release Notes</span>
+                <h2>What is in this build</h2>
+              </div>
+              <ul id="release-notes" class="release-notes"></ul>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <footer class="footer">
         <div class="container footer-inner">
-          <span>下载问题反馈：support@uniquerecord.com</span>
-          <span>官网域名：<code>uniquerecord.com</code></span>
+          <span>Need help with installation or release verification? support@uniquerecord.com</span>
+          <span><code>uniquerecord.com</code></span>
         </div>
       </footer>
     </div>

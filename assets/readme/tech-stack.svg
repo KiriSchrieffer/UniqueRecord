@@ -1,0 +1,29 @@
+﻿<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="420" fill="#07111E"/>
+  <rect x="42" y="42" width="1196" height="336" rx="28" fill="#0C1729" stroke="#243B68"/>
+  <text x="82" y="112" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="18" letter-spacing="3">TECH STACK</text>
+  <text x="82" y="170" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="44" font-weight="700">A desktop stack assembled for shipping, not just demos</text>
+  <path d="M236 278H414" stroke="#3E6CB0" stroke-width="4" stroke-linecap="round"/>
+  <path d="M602 278H780" stroke="#3E6CB0" stroke-width="4" stroke-linecap="round"/>
+  <path d="M968 278H1092" stroke="#3E6CB0" stroke-width="4" stroke-linecap="round"/>
+  <g>
+    <rect x="82" y="224" width="154" height="108" rx="20" fill="#101D34" stroke="#27497A"/>
+    <text x="112" y="267" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">BACKEND</text>
+    <text x="112" y="301" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="28" font-weight="700">Python</text>
+  </g>
+  <g>
+    <rect x="414" y="224" width="188" height="108" rx="20" fill="#101D34" stroke="#27497A"/>
+    <text x="444" y="267" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">FRONTEND</text>
+    <text x="444" y="301" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="28" font-weight="700">React + Vite</text>
+  </g>
+  <g>
+    <rect x="780" y="224" width="188" height="108" rx="20" fill="#101D34" stroke="#27497A"/>
+    <text x="810" y="267" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">CAPTURE HOST</text>
+    <text x="810" y="301" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="28" font-weight="700">.NET</text>
+  </g>
+  <g>
+    <rect x="1092" y="224" width="104" height="108" rx="20" fill="#101D34" stroke="#27497A"/>
+    <text x="1118" y="267" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="16">SHIP</text>
+    <text x="1118" y="301" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="24" font-weight="700">Installer</text>
+  </g>
+</svg>

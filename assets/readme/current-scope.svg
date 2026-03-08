@@ -1,0 +1,26 @@
+﻿<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="420" fill="#07111E"/>
+  <rect x="42" y="42" width="1196" height="336" rx="28" fill="#0C1729" stroke="#243B68"/>
+  <text x="82" y="112" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="18" letter-spacing="3">CURRENT SCOPE</text>
+  <text x="82" y="170" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="44" font-weight="700">Focused recording product, not generic screen capture</text>
+  <g>
+    <rect x="82" y="220" width="266" height="114" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="114" y="260" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="26" font-weight="700">Match detection</text>
+    <text x="114" y="294" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="18">Trigger recording only for valid sessions.</text>
+  </g>
+  <g>
+    <rect x="372" y="220" width="266" height="114" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="404" y="260" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="26" font-weight="700">Native capture</text>
+    <text x="404" y="294" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="18">Bundled Windows runtime, no extra tools.</text>
+  </g>
+  <g>
+    <rect x="662" y="220" width="266" height="114" rx="22" fill="#0A1323" stroke="#1D3A67"/>
+    <text x="694" y="260" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="26" font-weight="700">Video management</text>
+    <text x="694" y="294" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="18">Library, playback and cleanup inside the app.</text>
+  </g>
+  <g>
+    <rect x="952" y="220" width="244" height="114" rx="22" fill="#101D34" stroke="#27497A"/>
+    <text x="984" y="260" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="18">CURRENT GAME</text>
+    <text x="984" y="296" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="26" font-weight="700">League of Legends</text>
+  </g>
+</svg>

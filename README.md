@@ -1,10 +1,14 @@
 ﻿# UniqueRecord
 
+![UniqueRecord Hero](assets/readme/hero-banner.svg)
+
 UniqueRecord is a Windows desktop recorder built for game sessions. The current product scope focuses on automatically detecting and recording League of Legends matches, then saving completed videos to the user's configured library.
 
 [中文说明 / Chinese README](README.zh-CN.md)
 
 ## Install
+
+![Install Flow](assets/readme/install-flow.svg)
 
 Install UniqueRecord from the official website:
 
@@ -20,6 +24,8 @@ The recommended installation flow is:
 
 ## Current Scope
 
+![Current Scope](assets/readme/current-scope.svg)
+
 - Windows desktop application with embedded local UI
 - Automatic League of Legends match detection
 - Automatic recording start/stop around a match
@@ -28,6 +34,8 @@ The recommended installation flow is:
 - Windows installer distribution
 
 ## AI Direction
+
+![AI Direction](assets/readme/ai-direction.svg)
 
 UniqueRecord is planned to evolve into an AI-native recording platform, not just a recorder.
 
@@ -43,6 +51,8 @@ The long-term goal is for every recording to become structured, searchable, and 
 
 ## Tech Stack
 
+![Tech Stack](assets/readme/tech-stack.svg)
+
 - Python backend and desktop runtime in `src/unique_record`
 - React + Vite frontend in `design/figma/fluent_v1`
 - Native Windows capture host in `runtime/windows_capture/host/UniqueRecord.CaptureHost`
@@ -50,6 +60,8 @@ The long-term goal is for every recording to become structured, searchable, and 
 - Website and download page in `website`
 
 ## Development
+
+![Development](assets/readme/development.svg)
 
 Requirements:
 

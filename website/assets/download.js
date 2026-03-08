@@ -1,4 +1,4 @@
-const CACHE_BUSTER = Date.now();
+﻿const CACHE_BUSTER = Date.now();
 const MANIFEST_SOURCES = [
   {
     url: `https://download.uniquerecord.com/downloads/latest.json?t=${CACHE_BUSTER}`,
@@ -31,11 +31,7 @@ function setStatus(text, warn = false) {
   const el = document.getElementById("download-status");
   if (!el) return;
   el.textContent = text;
-  if (warn) {
-    el.classList.add("warn");
-  } else {
-    el.classList.remove("warn");
-  }
+  el.classList.toggle("warn", warn);
 }
 
 function setDownloadLink(url, fileName) {
@@ -50,6 +46,7 @@ async function loadManifest() {
     let manifest = null;
     let sourceLabel = "";
     let lastError = null;
+
     for (const source of MANIFEST_SOURCES) {
       try {
         const resp = await fetch(source.url, { cache: "no-store" });
@@ -62,6 +59,7 @@ async function loadManifest() {
         console.warn(`manifest load failed from ${source.label}`, err);
       }
     }
+
     if (!manifest) throw lastError || new Error("manifest unavailable");
 
     const version = manifest.version || "unknown";
@@ -88,15 +86,15 @@ async function loadManifest() {
       });
       if (notes.length === 0) {
         const li = document.createElement("li");
-        li.textContent = "当前版本未提供额外说明。";
+        li.textContent = "No additional release notes were provided for this build.";
         notesEl.appendChild(li);
       }
     }
 
-    setStatus(`下载信息已更新（来源：${sourceLabel}），可以直接下载安装。`);
+    setStatus(`Release manifest loaded successfully from ${sourceLabel}. The installer is ready to download.`);
   } catch (err) {
     console.error("failed to load manifest", err);
-    setStatus("暂时无法读取下载清单，请稍后重试或联系站点管理员。", true);
+    setStatus("The download manifest is temporarily unavailable. Please try again later.", true);
   }
 }
 

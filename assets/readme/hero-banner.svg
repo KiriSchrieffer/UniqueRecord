@@ -1,0 +1,59 @@
+﻿<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" fill="#07111E"/>
+  <circle cx="176" cy="108" r="210" fill="url(#g1)" fill-opacity="0.9"/>
+  <circle cx="1106" cy="88" r="220" fill="url(#g2)" fill-opacity="0.75"/>
+  <circle cx="917" cy="560" r="260" fill="url(#g3)" fill-opacity="0.45"/>
+  <rect x="64" y="64" width="1152" height="512" rx="30" fill="#0C1729" fill-opacity="0.76" stroke="#243B68"/>
+  <rect x="104" y="120" width="494" height="400" rx="24" fill="#0A1323" stroke="#1C335D"/>
+  <text x="104" y="174" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="20" letter-spacing="3">WINDOWS DESKTOP RECORDER</text>
+  <text x="104" y="258" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="62" font-weight="700">UniqueRecord</text>
+  <text x="104" y="318" fill="#D9E7FF" font-family="Segoe UI, Arial" font-size="28">Automatic match capture now.</text>
+  <text x="104" y="356" fill="#D9E7FF" font-family="Segoe UI, Arial" font-size="28">AI-native video workflows next.</text>
+  <rect x="104" y="404" width="196" height="48" rx="24" fill="url(#cta)"/>
+  <text x="145" y="435" fill="#04101B" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Download App</text>
+  <rect x="652" y="118" width="520" height="404" rx="26" fill="#0A1323" stroke="#1D3A67"/>
+  <rect x="688" y="160" width="448" height="250" rx="20" fill="#0E1C33" stroke="#2B4E83"/>
+  <rect x="720" y="196" width="164" height="34" rx="17" fill="#15345A"/>
+  <text x="744" y="219" fill="#D9E7FF" font-family="Segoe UI, Arial" font-size="16">Recording Logic Armed</text>
+  <rect x="900" y="196" width="132" height="34" rx="17" fill="#163A35"/>
+  <text x="930" y="219" fill="#CFFFEF" font-family="Segoe UI, Arial" font-size="16">LoL Online</text>
+  <text x="720" y="282" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="34" font-weight="700">Capture every match</text>
+  <text x="720" y="322" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="22">Native Windows recording with an AI-ready metadata layer.</text>
+  <rect x="720" y="356" width="120" height="34" rx="17" fill="#121F39" stroke="#27497A"/>
+  <rect x="858" y="356" width="120" height="34" rx="17" fill="url(#timeline)"/>
+  <rect x="996" y="356" width="120" height="34" rx="17" fill="#121F39" stroke="#27497A"/>
+  <text x="758" y="379" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="16">Lobby</text>
+  <text x="885" y="379" fill="#051019" font-family="Segoe UI, Arial" font-size="16" font-weight="700">In Match</text>
+  <text x="1013" y="379" fill="#A9B8D4" font-family="Segoe UI, Arial" font-size="16">Post Game</text>
+  <rect x="688" y="434" width="140" height="58" rx="18" fill="#101D34" stroke="#27497A"/>
+  <rect x="848" y="434" width="140" height="58" rx="18" fill="#101D34" stroke="#27497A"/>
+  <rect x="1008" y="434" width="128" height="58" rx="18" fill="#12192F" stroke="#2C4E7F"/>
+  <text x="706" y="460" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="14">PROFILE</text>
+  <text x="706" y="482" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="18" font-weight="700">1080p · 60 FPS</text>
+  <text x="866" y="460" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="14">AUDIO</text>
+  <text x="866" y="482" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="18" font-weight="700">System + Mic</text>
+  <text x="1028" y="460" fill="#8DBDFF" font-family="Segoe UI, Arial" font-size="14">AI READY</text>
+  <text x="1028" y="482" fill="#F2F7FF" font-family="Segoe UI, Arial" font-size="18" font-weight="700">Highlights</text>
+  <defs>
+    <radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(176 108) rotate(90) scale(210)">
+      <stop stop-color="#2359FF"/>
+      <stop offset="1" stop-color="#2359FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1106 88) rotate(90) scale(220)">
+      <stop stop-color="#61EFFF"/>
+      <stop offset="1" stop-color="#61EFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g3" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(917 560) rotate(90) scale(260)">
+      <stop stop-color="#7A7CFF"/>
+      <stop offset="1" stop-color="#7A7CFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cta" x1="104" y1="404" x2="300" y2="452" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#70C8FF"/>
+      <stop offset="1" stop-color="#8EFDFF"/>
+    </linearGradient>
+    <linearGradient id="timeline" x1="858" y1="356" x2="978" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#70C8FF"/>
+      <stop offset="1" stop-color="#8EFDFF"/>
+    </linearGradient>
+  </defs>
+</svg>
