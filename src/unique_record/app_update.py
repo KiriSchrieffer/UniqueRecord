@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -42,6 +43,18 @@ def _parse_time(value: Any) -> datetime | None:
         except ValueError:
             continue
     return None
+
+
+def _parse_version_tuple(value: Any) -> tuple[int, ...] | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    parts = re.findall(r"\d+", text)
+    if not parts:
+        return None
+    return tuple(int(part) for part in parts[:6])
 
 
 class AppUpdateService:
@@ -181,6 +194,19 @@ class AppUpdateService:
         current: dict[str, Any],
         manifest: dict[str, Any],
     ) -> tuple[bool, str]:
+        latest_version = str(manifest.get("version") or "").strip()
+        current_version = str(current.get("version") or "").strip()
+        latest_version_tuple = _parse_version_tuple(latest_version)
+        current_version_tuple = _parse_version_tuple(current_version)
+        if latest_version_tuple is not None and current_version_tuple is not None:
+            if latest_version_tuple > current_version_tuple:
+                return True, "version_newer"
+            if latest_version_tuple < current_version_tuple:
+                return False, "version_older"
+        elif latest_version and current_version and latest_version != current_version:
+            # Fallback for non-semver custom version strings.
+            return True, "version_mismatch"
+
         latest_published = _parse_time(manifest.get("published_at"))
         current_built = _parse_time(current.get("built_at_utc"))
 
@@ -188,11 +214,6 @@ class AppUpdateService:
             if latest_published > current_built:
                 return True, "published_at_newer"
             return False, "published_at_not_newer"
-
-        latest_version = str(manifest.get("version") or "").strip()
-        current_version = str(current.get("version") or "").strip()
-        if latest_version and current_version and latest_version != current_version:
-            return True, "version_mismatch"
 
         latest_file = str(manifest.get("file_name") or "").strip()
         if latest_file:
@@ -209,4 +230,3 @@ class AppUpdateService:
         if candidate.exists() and candidate.is_file():
             return candidate
         return None
-
