@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $ProjectRoot
+$script:RuntimeStageDir = $null
 
 function Invoke-Step {
     param(
@@ -47,20 +48,16 @@ Invoke-Step -Name "prepare runtime package" -Action {
         throw "Missing capture host executable: runtime/windows_capture/UniqueRecord.CaptureHost.exe"
     }
 
-    $runtimeStageRoot = Join-Path $ProjectRoot "build/runtime_package"
-    $runtimeStageDir = Join-Path $runtimeStageRoot "runtime"
-    $captureStageRoot = Join-Path $runtimeStageDir "windows_capture"
+    $runtimeStageRoot = Join-Path $ProjectRoot "build/runtime_package_$((Get-Date).ToString('yyyyMMdd_HHmmss_fff'))"
+    $script:RuntimeStageDir = Join-Path $runtimeStageRoot "runtime"
+    $captureStageRoot = Join-Path $script:RuntimeStageDir "windows_capture"
 
-    if (Test-Path $runtimeStageRoot) {
-        Remove-Item $runtimeStageRoot -Recurse -Force
-    }
-
-    New-Item -ItemType Directory -Path $runtimeStageDir | Out-Null
+    New-Item -ItemType Directory -Path $script:RuntimeStageDir | Out-Null
     New-Item -ItemType Directory -Path $captureStageRoot | Out-Null
 
     $runtimeReadme = Join-Path $runtimeSourceRoot "README.md"
     if (Test-Path $runtimeReadme) {
-        Copy-Item $runtimeReadme $runtimeStageDir -Force
+        Copy-Item $runtimeReadme $script:RuntimeStageDir -Force
     }
 
     Get-ChildItem $captureSourceRoot -Force `
@@ -90,7 +87,7 @@ Invoke-Step -Name "pip install desktop deps" -Action {
 
 Invoke-Step -Name "generate build metadata" -Action {
     $installerScript = Join-Path $ProjectRoot "installer\UniqueRecord.iss"
-    $version = "1.0.0"
+    $version = "1.0.1"
     if (Test-Path $installerScript) {
         $matched = Select-String -Path $installerScript -Pattern '#define\s+MyAppVersion\s+"([^"]+)"' | Select-Object -First 1
         if ($matched -and $matched.Matches.Count -gt 0) {
@@ -120,7 +117,10 @@ if (Test-Path -LiteralPath $appIconPath) {
 }
 
 $PyInstallerWorkPath = "build/pyinstaller_$((Get-Date).ToString('yyyyMMdd_HHmmss'))"
-$RuntimeAddDataSpec = (Join-Path $ProjectRoot "build/runtime_package/runtime") + ";runtime"
+if (-not $script:RuntimeStageDir -or -not (Test-Path $script:RuntimeStageDir)) {
+    throw "Runtime staging directory missing before pyinstaller step."
+}
+$RuntimeAddDataSpec = $script:RuntimeStageDir + ";runtime"
 
 Invoke-Step -Name "pyinstaller" -Action {
     $buildInfoAddDataSpec = (Join-Path $ProjectRoot "build\build_info.json") + ";build"

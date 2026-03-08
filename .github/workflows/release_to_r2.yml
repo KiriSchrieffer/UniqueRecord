@@ -6,7 +6,7 @@ on:
       version:
         description: "Version written into website/downloads/latest.json"
         required: true
-        default: "1.0.0"
+        default: "1.0.1"
       skip_frontend_build:
         description: "Skip frontend rebuild during packaging"
         required: true

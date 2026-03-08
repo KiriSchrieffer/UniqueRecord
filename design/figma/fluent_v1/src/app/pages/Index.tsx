@@ -170,7 +170,7 @@ export default function Index() {
                 {tr('文档：DESIGN_SYSTEM / PAGES_SPECIFICATION / PROJECT_README / QUICK_START', 'Docs: DESIGN_SYSTEM / PAGES_SPECIFICATION / PROJECT_README / QUICK_START')}
               </p>
             </div>
-            <div className="text-[12px] text-[var(--muted-foreground)]">v1.0.0 · © 2026 UniqueRecord</div>
+            <div className="text-[12px] text-[var(--muted-foreground)]">v1.0.1 · © 2026 UniqueRecord</div>
           </div>
         </Card>
       </div>

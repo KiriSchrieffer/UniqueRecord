@@ -1,7 +1,7 @@
 param(
     [string]$WebsiteRoot = ".\website",
     [string]$InstallerPath = "",
-    [string]$Version = "1.0.0",
+    [string]$Version = "1.0.1",
     [string]$PagesOutputRoot = ".\build\cloudflare_pages_upload",
     [string]$R2OutputRoot = ".\build\cloudflare_r2_upload",
     [string]$R2ObjectPrefix = "downloads",

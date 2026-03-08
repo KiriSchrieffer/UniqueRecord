@@ -397,7 +397,7 @@ export default function Diagnostics() {
           <div className="grid grid-cols-3 gap-4 text-[13px]">
             <div>
               <p className="text-[var(--muted-foreground)] mb-1">{tr('应用版本', 'App version')}</p>
-              <p className="font-medium">UniqueRecord v1.0.0</p>
+              <p className="font-medium">UniqueRecord v1.0.1</p>
             </div>
             <div>
               <p className="text-[var(--muted-foreground)] mb-1">{tr('录制引擎', 'Recorder engine')}</p>

@@ -52,7 +52,7 @@ export function Sidebar() {
           <UniqueRecordLogoSymbol size={32} />
           <div>
             <h1 className="text-[16px] font-semibold text-[var(--foreground)]">UniqueRecord</h1>
-            <p className="text-[11px] text-[var(--muted-foreground)]">v1.0.0</p>
+            <p className="text-[11px] text-[var(--muted-foreground)]">v1.0.1</p>
           </div>
         </div>
       </div>

@@ -52,6 +52,7 @@ export function Modal({
       <div 
         className={`
           relative w-full ${sizeStyles[size]}
+          max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col
           bg-[var(--card)] 
           border border-[var(--border)]
           rounded-[var(--radius-lg)]
@@ -81,7 +82,7 @@ export function Modal({
         </div>
         
         {/* Content */}
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 overflow-y-auto min-h-0">
           {children}
         </div>
         

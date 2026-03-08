@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { Card } from '../components/fluent/Card';
 import { Button } from '../components/fluent/Button';
@@ -9,17 +9,27 @@ import { Dropdown } from '../components/fluent/Dropdown';
 import { Modal } from '../components/fluent/Modal';
 import { Switch } from '../components/fluent/Switch';
 import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileVideo,
   Filter,
   Folder,
+  Maximize2,
+  Minimize2,
+  Pause,
   PlayCircle,
   RefreshCw,
   Search,
+  SkipBack,
+  SkipForward,
   Trash2,
   CheckSquare,
   ChevronDown,
   Square,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import {
   deleteHistoryItems,
@@ -63,6 +73,23 @@ interface RecordRow {
   participants: SessionMatchParticipant[];
 }
 
+type TimelineEventKind = 'kill' | 'teamfight' | 'objective' | 'voice' | 'bookmark';
+
+interface TimelineEvent {
+  id: string;
+  kind: TimelineEventKind;
+  timeSeconds: number;
+  title: string;
+  detail: string;
+}
+
+interface TimelineChapter {
+  id: string;
+  label: string;
+  startSeconds: number;
+  endSeconds: number;
+}
+
 function escapeCsv(value: string): string {
   if (/[",\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -94,6 +121,21 @@ function formatListPreview(values: string[] | null | undefined): string {
   return `${preview} +${values.length - 2}`;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatTimelineTimestamp(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = safe % 60;
+  if (h > 0) {
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function History() {
   const { tr } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,6 +161,29 @@ export default function History() {
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
   const [playerRow, setPlayerRow] = useState<RecordRow | null>(null);
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [isPlayerPlaying, setIsPlayerPlaying] = useState(false);
+  const [playerCurrentSeconds, setPlayerCurrentSeconds] = useState(0);
+  const [playerDurationSeconds, setPlayerDurationSeconds] = useState(0);
+  const [playerBufferedSeconds, setPlayerBufferedSeconds] = useState(0);
+  const [playerVolume, setPlayerVolume] = useState(0.9);
+  const [playerMuted, setPlayerMuted] = useState(false);
+  const [playerPlaybackRate, setPlayerPlaybackRate] = useState(1);
+  const [playerControlsVisible, setPlayerControlsVisible] = useState(true);
+  const [isPlayerMiniMode, setIsPlayerMiniMode] = useState(false);
+  const [showPlayerEventPanel, setShowPlayerEventPanel] = useState(true);
+  const showPlayerEventUi = false;
+  const [timelineZoom, setTimelineZoom] = useState(1);
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
+  const [timelineEventVisibility, setTimelineEventVisibility] = useState<Record<TimelineEventKind, boolean>>({
+    kill: true,
+    teamfight: true,
+    objective: true,
+    voice: true,
+    bookmark: true,
+  });
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const hideControlsTimerRef = useRef<number | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsRow, setDetailsRow] = useState<RecordRow | null>(null);
 
@@ -288,14 +353,206 @@ export default function History() {
     }
     setPlayerRow(row);
     setPlayerError(null);
+    setPlayerCurrentSeconds(0);
+    setPlayerDurationSeconds(0);
+    setPlayerBufferedSeconds(0);
+    setPlayerPlaybackRate(1);
+    setTimelineZoom(1);
+    setIsPlayerMiniMode(false);
+    setShowPlayerEventPanel(false);
+    setHoveredEventId(null);
+    setTimelineEventVisibility({
+      kill: true,
+      teamfight: true,
+      objective: true,
+      voice: true,
+      bookmark: true,
+    });
     setIsPlayerModalOpen(true);
   };
 
   const closePlayerModal = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (hideControlsTimerRef.current !== null) {
+      window.clearTimeout(hideControlsTimerRef.current);
+      hideControlsTimerRef.current = null;
+    }
     setIsPlayerModalOpen(false);
     setPlayerError(null);
     setPlayerRow(null);
+    setIsPlayerPlaying(false);
+    setPlayerControlsVisible(true);
   };
+
+  const scheduleHidePlayerControls = () => {
+    if (hideControlsTimerRef.current !== null) {
+      window.clearTimeout(hideControlsTimerRef.current);
+      hideControlsTimerRef.current = null;
+    }
+    if (!isPlayerPlaying) {
+      return;
+    }
+    hideControlsTimerRef.current = window.setTimeout(() => {
+      setPlayerControlsVisible(false);
+    }, 2200);
+  };
+
+  const revealPlayerControls = () => {
+    setPlayerControlsVisible(true);
+    scheduleHidePlayerControls();
+  };
+
+  const syncPlayerFromVideo = () => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+    if (Number.isFinite(element.currentTime)) {
+      setPlayerCurrentSeconds(element.currentTime);
+    }
+    if (Number.isFinite(element.duration) && element.duration > 0) {
+      setPlayerDurationSeconds(element.duration);
+    }
+    const buffered = element.buffered;
+    if (buffered.length > 0) {
+      setPlayerBufferedSeconds(buffered.end(buffered.length - 1));
+    } else {
+      setPlayerBufferedSeconds(0);
+    }
+  };
+
+  const seekPlayerTo = (seconds: number) => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+    const limit = playerDurationSeconds > 0 ? playerDurationSeconds : Number.isFinite(element.duration) ? element.duration : 0;
+    const nextSeconds = clamp(seconds, 0, Math.max(0, limit || 0));
+    element.currentTime = nextSeconds;
+    setPlayerCurrentSeconds(nextSeconds);
+    revealPlayerControls();
+  };
+
+  const togglePlayerPlayback = async () => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+    try {
+      if (element.paused) {
+        await element.play();
+      } else {
+        element.pause();
+      }
+    } catch (err) {
+      setPlayerError(err instanceof Error ? err.message : tr('视频播放失败', 'Failed to play video'));
+    }
+    revealPlayerControls();
+  };
+
+  const stepPlayerBySeconds = (delta: number) => {
+    seekPlayerTo(playerCurrentSeconds + delta);
+  };
+
+  const setPlayerVolumeFromValue = (value: number) => {
+    const normalized = clamp(value, 0, 1);
+    setPlayerVolume(normalized);
+    if (normalized > 0 && playerMuted) {
+      setPlayerMuted(false);
+    }
+    revealPlayerControls();
+  };
+
+  const togglePlayerMute = () => {
+    setPlayerMuted((prev) => !prev);
+    revealPlayerControls();
+  };
+
+  const setPlayerRate = (rate: number) => {
+    const normalized = clamp(rate, 0.5, 2);
+    setPlayerPlaybackRate(Number(normalized.toFixed(2)));
+    revealPlayerControls();
+  };
+
+  const togglePlayerFullscreen = async () => {
+    const target = playerSurfaceRef.current;
+    if (!target) {
+      return;
+    }
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await target.requestFullscreen();
+      }
+    } catch (err) {
+      setPlayerError(err instanceof Error ? err.message : tr('无法切换全屏', 'Failed to toggle fullscreen'));
+    }
+    revealPlayerControls();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideControlsTimerRef.current !== null) {
+        window.clearTimeout(hideControlsTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+    element.volume = playerVolume;
+    element.muted = playerMuted;
+    element.playbackRate = playerPlaybackRate;
+  }, [isPlayerModalOpen, playerVolume, playerMuted, playerPlaybackRate]);
+
+  useEffect(() => {
+    if (!isPlayerModalOpen || !isPlayerPlaying) {
+      if (hideControlsTimerRef.current !== null) {
+        window.clearTimeout(hideControlsTimerRef.current);
+        hideControlsTimerRef.current = null;
+      }
+      setPlayerControlsVisible(true);
+      return;
+    }
+    scheduleHidePlayerControls();
+  }, [isPlayerModalOpen, isPlayerPlaying]);
+
+  useEffect(() => {
+    if (!isPlayerModalOpen) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName)) {
+        return;
+      }
+      if (event.code === 'Space') {
+        event.preventDefault();
+        void togglePlayerPlayback();
+        return;
+      }
+      if (event.code === 'ArrowLeft') {
+        event.preventDefault();
+        stepPlayerBySeconds(-5);
+        return;
+      }
+      if (event.code === 'ArrowRight') {
+        event.preventDefault();
+        stepPlayerBySeconds(5);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isPlayerModalOpen, playerCurrentSeconds, isPlayerPlaying]);
 
   const openDetailsModal = (row: RecordRow) => {
     setDetailsRow(row);
@@ -531,6 +788,146 @@ export default function History() {
     .reduce((acc, item) => acc + (item.file_size_bytes as number), 0);
 
   const isAllFilteredSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedSet.has(row.id));
+  const timelineDurationSeconds =
+    playerDurationSeconds > 0
+      ? playerDurationSeconds
+      : playerRow?.durationSeconds && playerRow.durationSeconds > 0
+      ? playerRow.durationSeconds
+      : 0;
+  const timelineWidthPercent = Math.max(100, Math.round(timelineZoom * 100));
+
+  const timelineEventMeta = {
+    kill: { label: tr('击杀', 'Kill'), color: '#ff6a8b' },
+    teamfight: { label: tr('团战', 'Teamfight'), color: '#7f8dff' },
+    objective: { label: tr('目标', 'Objective'), color: '#48d8ba' },
+    voice: { label: tr('语音', 'Voice'), color: '#f8b85e' },
+    bookmark: { label: tr('书签', 'Bookmark'), color: '#72c3ff' },
+  } satisfies Record<TimelineEventKind, { label: string; color: string }>;
+
+  const timelineChapters = useMemo<TimelineChapter[]>(() => {
+    if (!playerRow || timelineDurationSeconds <= 0) {
+      return [];
+    }
+    const earlyEnd = timelineDurationSeconds * 0.32;
+    const midEnd = timelineDurationSeconds * 0.68;
+    return [
+      {
+        id: 'chapter-early',
+        label: tr('前期', 'Early Game'),
+        startSeconds: 0,
+        endSeconds: earlyEnd,
+      },
+      {
+        id: 'chapter-mid',
+        label: tr('中期', 'Mid Game'),
+        startSeconds: earlyEnd,
+        endSeconds: midEnd,
+      },
+      {
+        id: 'chapter-late',
+        label: tr('后期', 'Late Game'),
+        startSeconds: midEnd,
+        endSeconds: timelineDurationSeconds,
+      },
+    ];
+  }, [playerRow, timelineDurationSeconds, tr]);
+
+  const allTimelineEvents = useMemo<TimelineEvent[]>(() => {
+    if (!playerRow || timelineDurationSeconds <= 0) {
+      return [];
+    }
+    const hash = playerRow.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const offset = ((hash % 15) - 7) / 250;
+    const anchors = [0.06, 0.17, 0.31, 0.5, 0.63, 0.78, 0.9].map((base) => clamp(base + offset, 0.03, 0.96));
+    const championName = playerRow.playerSummary?.champion || tr('未知英雄', 'Unknown champion');
+    const kdaText = formatKda(playerRow.playerSummary);
+
+    return [
+      {
+        id: `${playerRow.id}-bookmark-start`,
+        kind: 'bookmark',
+        timeSeconds: clamp(2, 0, timelineDurationSeconds),
+        title: tr('对局开始', 'Match Start'),
+        detail: tr('录制已自动启动。', 'Recording auto-started.'),
+      },
+      {
+        id: `${playerRow.id}-voice-call`,
+        kind: 'voice',
+        timeSeconds: timelineDurationSeconds * anchors[1],
+        title: tr('语音指令片段', 'Voice Comms Segment'),
+        detail: tr('预留人声转文字索引入口。', 'Reserved for speech-to-text indexing.'),
+      },
+      {
+        id: `${playerRow.id}-kill-impact`,
+        kind: 'kill',
+        timeSeconds: timelineDurationSeconds * anchors[2],
+        title: tr('关键击杀', 'Impact Kill'),
+        detail: tr('英雄 {hero} 关键操作，KDA {kda}', 'Key play by {hero}, KDA {kda}')
+          .replace('{hero}', championName)
+          .replace('{kda}', kdaText),
+      },
+      {
+        id: `${playerRow.id}-teamfight-main`,
+        kind: 'teamfight',
+        timeSeconds: timelineDurationSeconds * anchors[3],
+        title: tr('团战高峰', 'Major Teamfight'),
+        detail: tr('建议用于精彩片段提取。', 'Candidate for highlight extraction.'),
+      },
+      {
+        id: `${playerRow.id}-objective`,
+        kind: 'objective',
+        timeSeconds: timelineDurationSeconds * anchors[4],
+        title: tr('关键目标', 'Major Objective'),
+        detail: tr('预留目标事件标记能力。', 'Reserved for objective event tagging.'),
+      },
+      {
+        id: `${playerRow.id}-bookmark-custom`,
+        kind: 'bookmark',
+        timeSeconds: timelineDurationSeconds * anchors[5],
+        title: tr('手动书签位', 'Manual Bookmark Slot'),
+        detail: tr('预留用户手动打点。', 'Reserved for user bookmarks.'),
+      },
+      {
+        id: `${playerRow.id}-bookmark-end`,
+        kind: 'bookmark',
+        timeSeconds: clamp(timelineDurationSeconds - 5, 0, timelineDurationSeconds),
+        title: tr('对局结束', 'Match End'),
+        detail: tr('录制准备封装输出。', 'Recording finalization.'),
+      },
+    ].sort((a, b) => a.timeSeconds - b.timeSeconds);
+  }, [playerRow, timelineDurationSeconds, tr]);
+
+  const visibleTimelineEvents = useMemo(() => {
+    return allTimelineEvents.filter((event) => timelineEventVisibility[event.kind]);
+  }, [allTimelineEvents, timelineEventVisibility]);
+
+  const hoveredTimelineEvent = useMemo(() => {
+    if (!hoveredEventId) {
+      return null;
+    }
+    return visibleTimelineEvents.find((event) => event.id === hoveredEventId) || null;
+  }, [hoveredEventId, visibleTimelineEvents]);
+
+  const jumpToTimelineEvent = (event: TimelineEvent) => {
+    seekPlayerTo(event.timeSeconds);
+  };
+
+  const jumpToNextTimelineEvent = () => {
+    const nextEvent = visibleTimelineEvents.find((event) => event.timeSeconds > playerCurrentSeconds + 0.25);
+    if (nextEvent) {
+      jumpToTimelineEvent(nextEvent);
+    }
+  };
+
+  const jumpToPreviousTimelineEvent = () => {
+    const reversed = [...visibleTimelineEvents].reverse();
+    const previousEvent = reversed.find((event) => event.timeSeconds < playerCurrentSeconds - 0.25);
+    if (previousEvent) {
+      jumpToTimelineEvent(previousEvent);
+    }
+  };
+
+  const playerRateOptions = [0.75, 1, 1.25, 1.5, 2];
   const playerMediaUrl = playerRow ? getSessionMediaUrl(playerRow.id) : '';
 
   return (
@@ -743,6 +1140,7 @@ export default function History() {
         isOpen={isPlayerModalOpen}
         onClose={closePlayerModal}
         size="lg"
+        className="max-w-[min(1200px,96vw)]"
         title={tr('内置播放器', 'Built-in Player')}
         footer={
           <>
@@ -778,28 +1176,431 @@ export default function History() {
           </>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           {playerError && <p className="text-[13px] text-[var(--status-error)]">{playerError}</p>}
           {!playerError && playerRow && (
-            <>
-              <div className="rounded-[var(--radius-md)] overflow-hidden bg-black border border-[var(--border)]">
-                <video
-                  key={playerRow.id}
-                  className="w-full max-h-[68vh] bg-black"
-                  controls
-                  preload="metadata"
-                  src={playerMediaUrl}
-                  onError={() => {
-                    setPlayerError(
-                      tr(
-                        '视频加载失败，请确认文件存在且编码可播放。',
-                        'Failed to load video. Confirm the file exists and codec is playable.'
-                      )
-                    );
-                  }}
-                />
+            <div className="space-y-4">
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--neutral-10)] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[13px] text-[var(--muted-foreground)]">{tr('当前视频', 'Current video')}</p>
+                    <p className="text-[14px] font-medium">
+                      {playerRow.startTime} · {playerRow.hero || '--'} · {playerRow.duration}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        setIsPlayerMiniMode((prev) => !prev);
+                        revealPlayerControls();
+                      }}
+                    >
+                      {isPlayerMiniMode ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                      {isPlayerMiniMode ? tr('退出迷你模式', 'Exit mini mode') : tr('迷你模式', 'Mini mode')}
+                    </Button>
+                    {showPlayerEventUi && (
+                      <Button
+                        variant="subtle"
+                        size="sm"
+                        onClick={() => {
+                          setShowPlayerEventPanel((prev) => !prev);
+                          revealPlayerControls();
+                        }}
+                      >
+                        {showPlayerEventPanel ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                        {showPlayerEventPanel ? tr('隐藏事件面板', 'Hide events panel') : tr('显示事件面板', 'Show events panel')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </>
+
+              <div
+                className={`grid gap-4 ${
+                  !isPlayerMiniMode && showPlayerEventUi && showPlayerEventPanel ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : 'grid-cols-1'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div
+                    ref={playerSurfaceRef}
+                    className="player-surface relative rounded-[var(--radius-md)] overflow-hidden bg-black border border-[var(--border)]"
+                    onMouseMove={revealPlayerControls}
+                  >
+                    <video
+                      key={playerRow.id}
+                      ref={videoRef}
+                      className="player-video bg-black cursor-pointer"
+                      preload="metadata"
+                      src={playerMediaUrl}
+                      onClick={() => {
+                        void togglePlayerPlayback();
+                      }}
+                      onLoadedMetadata={syncPlayerFromVideo}
+                      onDurationChange={syncPlayerFromVideo}
+                      onTimeUpdate={syncPlayerFromVideo}
+                      onProgress={syncPlayerFromVideo}
+                      onPlay={() => {
+                        setIsPlayerPlaying(true);
+                        scheduleHidePlayerControls();
+                      }}
+                      onPause={() => {
+                        setIsPlayerPlaying(false);
+                        setPlayerControlsVisible(true);
+                      }}
+                      onEnded={() => {
+                        setIsPlayerPlaying(false);
+                        setPlayerControlsVisible(true);
+                      }}
+                      onError={() => {
+                        setPlayerError(
+                          tr(
+                            '视频加载失败，请确认文件存在且编码可播放。',
+                            'Failed to load video. Confirm the file exists and codec is playable.'
+                          )
+                        );
+                      }}
+                    />
+
+                    {playerControlsVisible && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <button
+                          type="button"
+                          className="pointer-events-auto inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/35 bg-black/45 text-white transition hover:bg-black/60"
+                          onClick={() => {
+                            void togglePlayerPlayback();
+                          }}
+                          aria-label={isPlayerPlaying ? tr('暂停', 'Pause') : tr('播放', 'Play')}
+                        >
+                          {isPlayerPlaying ? <Pause size={30} /> : <PlayCircle size={30} />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    className={`rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--neutral-10)] p-3 transition-opacity ${
+                      playerControlsVisible ? 'opacity-100' : 'opacity-65'
+                    }`}
+                    onMouseMove={revealPlayerControls}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            stepPlayerBySeconds(-10);
+                          }}
+                        >
+                          <SkipBack size={14} />
+                          {tr('后退10秒', 'Back 10s')}
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            void togglePlayerPlayback();
+                          }}
+                        >
+                          {isPlayerPlaying ? <Pause size={14} /> : <PlayCircle size={14} />}
+                          {isPlayerPlaying ? tr('暂停', 'Pause') : tr('播放', 'Play')}
+                        </Button>
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            stepPlayerBySeconds(10);
+                          }}
+                        >
+                          <SkipForward size={14} />
+                          {tr('前进10秒', 'Forward 10s')}
+                        </Button>
+                        {showPlayerEventUi && (
+                          <Button variant="subtle" size="sm" onClick={jumpToPreviousTimelineEvent}>
+                            <ChevronLeft size={14} />
+                            {tr('上一个事件', 'Prev event')}
+                          </Button>
+                        )}
+                        {showPlayerEventUi && (
+                          <Button variant="subtle" size="sm" onClick={jumpToNextTimelineEvent}>
+                            <ChevronRight size={14} />
+                            {tr('下一个事件', 'Next event')}
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)]"
+                          onClick={togglePlayerMute}
+                          aria-label={playerMuted ? tr('取消静音', 'Unmute') : tr('静音', 'Mute')}
+                        >
+                          {playerMuted || playerVolume <= 0.01 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                        </button>
+                        <input
+                          className="player-volume-range"
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={playerMuted ? 0 : playerVolume}
+                          onChange={(e) => {
+                            setPlayerVolumeFromValue(Number.parseFloat(e.target.value));
+                          }}
+                          aria-label={tr('音量', 'Volume')}
+                        />
+                        <div className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-1">
+                          {playerRateOptions.map((rate) => (
+                            <button
+                              key={`rate-${rate}`}
+                              type="button"
+                              className={`rounded-[var(--radius-sm)] px-2 py-1 text-[12px] transition ${
+                                Math.abs(playerPlaybackRate - rate) < 0.01
+                                  ? 'bg-[var(--fluent-blue)] text-white'
+                                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                              }`}
+                              onClick={() => {
+                                setPlayerRate(rate);
+                              }}
+                            >
+                              {rate}x
+                            </button>
+                          ))}
+                        </div>
+                        <Button variant="subtle" size="sm" onClick={() => void togglePlayerFullscreen()}>
+                          <Maximize2 size={14} />
+                          {tr('全屏', 'Fullscreen')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--neutral-10)] p-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[13px] font-medium">
+                        {tr('时间轴', 'Timeline')} · {formatTimelineTimestamp(playerCurrentSeconds)} /{' '}
+                        {formatTimelineTimestamp(timelineDurationSeconds)}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            setTimelineZoom((prev) => clamp(prev / 2, 1, 8));
+                          }}
+                        >
+                          {tr('缩小', 'Zoom out')}
+                        </Button>
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            setTimelineZoom((prev) => clamp(prev * 2, 1, 8));
+                          }}
+                        >
+                          {tr('放大', 'Zoom in')}
+                        </Button>
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            setTimelineZoom(1);
+                          }}
+                        >
+                          {tr('适配全长', 'Fit to full')}
+                        </Button>
+                        <span className="rounded-[var(--radius-sm)] border border-[var(--border)] px-2 py-1 text-[12px] text-[var(--muted-foreground)]">
+                          {timelineZoom.toFixed(1)}x
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto pb-1">
+                      <div className="relative min-h-[118px]" style={{ width: `${timelineWidthPercent}%` }}>
+                        {timelineChapters.map((chapter, index) => {
+                          const leftPercent = timelineDurationSeconds > 0 ? (chapter.startSeconds / timelineDurationSeconds) * 100 : 0;
+                          const rightPercent = timelineDurationSeconds > 0 ? (chapter.endSeconds / timelineDurationSeconds) * 100 : 0;
+                          const widthPercent = clamp(rightPercent - leftPercent, 0, 100);
+                          return (
+                            <div
+                              key={chapter.id}
+                              className={`absolute top-0 h-8 rounded-[var(--radius-sm)] border px-2 text-[11px] font-medium ${
+                                index % 2 === 0
+                                  ? 'border-[var(--fluent-blue)]/30 bg-[var(--fluent-blue-lighter)]/70'
+                                  : 'border-[var(--neutral-40)] bg-white'
+                              }`}
+                              style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                            >
+                              <span className="leading-7">{chapter.label}</span>
+                            </div>
+                          );
+                        })}
+
+                        {showPlayerEventUi &&
+                          visibleTimelineEvents.map((event) => {
+                            const leftPercent = timelineDurationSeconds > 0 ? (event.timeSeconds / timelineDurationSeconds) * 100 : 0;
+                            const color = timelineEventMeta[event.kind].color;
+                            return (
+                              <button
+                                key={event.id}
+                                type="button"
+                                className="absolute top-10 -translate-x-1/2 rounded-full border px-2 py-1 text-[11px] font-medium transition hover:-translate-y-[1px]"
+                                style={{
+                                  left: `${leftPercent}%`,
+                                  borderColor: `${color}66`,
+                                  background: `${color}22`,
+                                  color,
+                                }}
+                                onClick={() => {
+                                  jumpToTimelineEvent(event);
+                                }}
+                                onMouseEnter={() => setHoveredEventId(event.id)}
+                                onMouseLeave={() => setHoveredEventId((prev) => (prev === event.id ? null : prev))}
+                              >
+                                {timelineEventMeta[event.kind].label}
+                              </button>
+                            );
+                          })}
+
+                        {showPlayerEventUi && hoveredTimelineEvent && (
+                          <div
+                            className="absolute top-[70px] z-20 w-64 -translate-x-1/2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-2 shadow-[var(--shadow-lg)]"
+                            style={{
+                              left: `${clamp(
+                                timelineDurationSeconds > 0
+                                  ? (hoveredTimelineEvent.timeSeconds / timelineDurationSeconds) * 100
+                                  : 0,
+                                10,
+                                90
+                              )}%`,
+                            }}
+                          >
+                            <p className="text-[12px] font-medium">
+                              {hoveredTimelineEvent.title} · {formatTimelineTimestamp(hoveredTimelineEvent.timeSeconds)}
+                            </p>
+                            <p className="text-[12px] text-[var(--muted-foreground)]">{hoveredTimelineEvent.detail}</p>
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-0 left-0 right-0 h-12 px-1">
+                          <div className="relative h-full">
+                            <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[var(--neutral-30)]" />
+                            <div
+                              className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[var(--neutral-40)]"
+                              style={{
+                                width: `${
+                                  timelineDurationSeconds > 0
+                                    ? clamp((playerBufferedSeconds / timelineDurationSeconds) * 100, 0, 100)
+                                    : 0
+                                }%`,
+                              }}
+                            />
+                            <div
+                              className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[var(--fluent-blue)]"
+                              style={{
+                                width: `${
+                                  timelineDurationSeconds > 0
+                                    ? clamp((playerCurrentSeconds / timelineDurationSeconds) * 100, 0, 100)
+                                    : 0
+                                }%`,
+                              }}
+                            />
+                            <input
+                              className="player-seek-range absolute left-0 top-1/2 h-8 w-full -translate-y-1/2"
+                              type="range"
+                              min={0}
+                              max={Math.max(0, timelineDurationSeconds)}
+                              step={0.05}
+                              value={clamp(playerCurrentSeconds, 0, Math.max(0, timelineDurationSeconds))}
+                              onChange={(e) => {
+                                seekPlayerTo(Number.parseFloat(e.target.value));
+                              }}
+                              onMouseDown={() => setPlayerControlsVisible(true)}
+                              aria-label={tr('视频时间轴', 'Video timeline')}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--muted-foreground)]">
+                      <span>{tr('键盘快捷键：空格播放/暂停，方向键可跳转。', 'Shortcuts: Space play/pause, arrow keys to seek.')}</span>
+                      {showPlayerEventUi && (
+                        <span>{tr('事件图层已预留 AI 标记能力。', 'Event layers are ready for AI markers.')}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {showPlayerEventUi && !isPlayerMiniMode && showPlayerEventPanel && (
+                  <aside className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--neutral-10)] p-3">
+                    <p className="text-[13px] font-medium mb-2">{tr('事件图层', 'Event layers')}</p>
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {(Object.keys(timelineEventMeta) as TimelineEventKind[]).map((kind) => (
+                        <button
+                          key={`filter-${kind}`}
+                          type="button"
+                          className={`rounded-[var(--radius-sm)] border px-2 py-1 text-[12px] transition ${
+                            timelineEventVisibility[kind]
+                              ? 'border-[var(--fluent-blue)] bg-[var(--fluent-blue-lighter)] text-[var(--fluent-blue)]'
+                              : 'border-[var(--border)] text-[var(--muted-foreground)]'
+                          }`}
+                          onClick={() => {
+                            setTimelineEventVisibility((prev) => ({ ...prev, [kind]: !prev[kind] }));
+                          }}
+                        >
+                          {timelineEventMeta[kind].label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[13px] font-medium mb-2">{tr('事件列表', 'Event list')}</p>
+                    {visibleTimelineEvents.length <= 0 ? (
+                      <p className="text-[12px] text-[var(--muted-foreground)]">
+                        {tr('当前筛选下暂无事件。', 'No events under current filters.')}
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-[340px] overflow-auto pr-1">
+                        {visibleTimelineEvents.map((event) => (
+                          <button
+                            key={`list-${event.id}`}
+                            type="button"
+                            className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--card)] p-2 text-left hover:border-[var(--fluent-blue)]"
+                            onClick={() => {
+                              jumpToTimelineEvent(event);
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[12px] font-medium">{event.title}</span>
+                              <span className="text-[11px] text-[var(--muted-foreground)]">
+                                {formatTimelineTimestamp(event.timeSeconds)}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{event.detail}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 rounded-[var(--radius-sm)] border border-dashed border-[var(--border)] p-2">
+                      <p className="text-[11px] font-medium flex items-center gap-1">
+                        <Bookmark size={12} />
+                        {tr('后续扩展', 'Future expansion')}
+                      </p>
+                      <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                        {tr(
+                          '这里将接入 AI 自动标记、语音转文字索引和用户手动打点。',
+                          'This panel will host AI markers, speech transcript anchors and user bookmarks.'
+                        )}
+                      </p>
+                    </div>
+                  </aside>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </Modal>
@@ -837,3 +1638,4 @@ export default function History() {
     </AppLayout>
   );
 }
+
