@@ -1,74 +1,83 @@
-# UniqueRecord
+﻿# UniqueRecord
 
-UniqueRecord 是一个 Windows 桌面录制软件项目，当前主要面向《英雄联盟》自动录制场景：检测到对局开始自动录制，对局结束自动停止并保存视频。
+UniqueRecord is a Windows desktop recorder built for game sessions. The current product scope focuses on automatically detecting and recording League of Legends matches, then saving completed videos to the user's configured library.
 
-## 当前能力
+[中文说明 / Chinese README](README.zh-CN.md)
 
-- Windows 桌面程序（`pywebview` + 内嵌前端）
-- 对局状态检测与自动录制流程
-- 本地视频管理（历史、筛选、删除、内置播放器）
-- 中英文界面切换
-- Windows 安装器打包（Inno Setup）
+## Install
 
-## 技术结构
+Install UniqueRecord from the official website:
 
-- 后端与业务逻辑：Python（`src/unique_record`）
-- 桌面入口：`scripts/run_desktop_app.py`
-- 前端 UI：React + Vite（`design/figma/fluent_v1`）
-- 录制 Host：C#/.NET（`runtime/windows_capture/host/UniqueRecord.CaptureHost`）
+- Website: `https://uniquerecord.com`
+- Download page: `https://uniquerecord.com/download`
 
-## 开发环境要求
+The recommended installation flow is:
+
+1. Open the download page.
+2. Download the latest Windows installer.
+3. Run the installer and choose an install path.
+4. Launch UniqueRecord from the installed application.
+
+## Current Scope
+
+- Windows desktop application with embedded local UI
+- Automatic League of Legends match detection
+- Automatic recording start/stop around a match
+- Local video management and playback
+- Chinese and English UI support
+- Windows installer distribution
+
+## AI Direction
+
+UniqueRecord is planned to evolve into an AI-native recording platform, not just a recorder.
+
+Future AI capabilities will include:
+
+- automatic highlight extraction from each recording
+- speech-to-text focused on human voice in recordings
+- text search to jump directly to matching moments in a video
+- intelligent multi-clip montage generation
+- semantic indexing for faster review and reuse of recorded content
+
+The long-term goal is for every recording to become structured, searchable, and editable through AI-assisted workflows.
+
+## Tech Stack
+
+- Python backend and desktop runtime in `src/unique_record`
+- React + Vite frontend in `design/figma/fluent_v1`
+- Native Windows capture host in `runtime/windows_capture/host/UniqueRecord.CaptureHost`
+- Inno Setup installer scripts in `installer`
+- Website and download page in `website`
+
+## Development
+
+Requirements:
 
 - Windows 10/11
 - Python 3.12+
 - Node.js 18+
-- .NET SDK 10（用于构建 CaptureHost）
-- Inno Setup 6（用于生成安装器）
+- .NET SDK 10
+- Inno Setup 6
 
-## 本地开发启动
-
-1. 安装前端依赖并构建：
+Local development:
 
 ```powershell
 cd .\design\figma\fluent_v1
 npm install
 npm run build
 cd ..\..\..
-```
-
-2. 安装 Python 依赖：
-
-```powershell
 python -m pip install -r .\requirements-desktop.txt
-```
-
-3. 启动桌面程序（开发模式）：
-
-```powershell
 python .\scripts\run_desktop_app.py
 ```
 
-## 打包
-
-1. 打包桌面程序（生成 `dist/UniqueRecord/UniqueRecord.exe`）：
+Build desktop package:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_desktop.ps1
 ```
 
-2. 打包安装器（生成到 `dist_installer`）：
+Build installer:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1
 ```
-
-## 主要目录
-
-- `src/unique_record`：核心业务代码（检测、录制、会话索引、HTTP API）
-- `design/figma/fluent_v1`：主 UI 工程
-- `runtime/windows_capture/host/UniqueRecord.CaptureHost`：原生录制 Host 源码
-- `scripts`：构建、运行、发布辅助脚本
-- `installer`：Inno Setup 脚本
-- `website`：官网静态页面与下载页
-- `docs`：项目设计与开发文档
-
